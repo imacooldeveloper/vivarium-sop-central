@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { 
   createUserWithEmailAndPassword,
@@ -41,18 +42,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       console.log("Fetching user profile for UID:", uid);
       
-      // First try to fetch from the 'users' collection
-      const userDoc = await getDoc(doc(db, "users", uid));
-      
-      if (userDoc.exists()) {
-        const userData = userDoc.data() as User;
-        console.log("Found user in 'users' collection:", userData);
-        console.log("Organization ID:", userData.organizationId);
-        setUserProfile(userData);
-        return;
-      }
-      
-      // If not found in 'users', try the 'Users' collection (case sensitivity matters in Firestore)
+      // First try the 'Users' collection (case matters in Firestore)
       const userDocAlt = await getDoc(doc(db, "Users", uid));
       
       if (userDocAlt.exists()) {
@@ -63,25 +53,36 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return;
       }
       
-      // If still not found, try querying by userUID field
-      const usersQuery = query(collection(db, "users"), where("userUID", "==", uid));
-      const querySnapshot = await getDocs(usersQuery);
+      // If not found, try the 'users' collection
+      const userDoc = await getDoc(doc(db, "users", uid));
       
-      if (!querySnapshot.empty) {
-        const userData = querySnapshot.docs[0].data() as User;
-        console.log("Found user by userUID query:", userData);
+      if (userDoc.exists()) {
+        const userData = userDoc.data() as User;
+        console.log("Found user in 'users' collection:", userData);
         console.log("Organization ID:", userData.organizationId);
         setUserProfile(userData);
         return;
       }
       
-      // Try Users collection with userUID query
+      // If still not found, try querying by userUID field in 'Users'
       const usersQueryAlt = query(collection(db, "Users"), where("userUID", "==", uid));
       const querySnapshotAlt = await getDocs(usersQueryAlt);
       
       if (!querySnapshotAlt.empty) {
         const userData = querySnapshotAlt.docs[0].data() as User;
         console.log("Found user by userUID query in Users collection:", userData);
+        console.log("Organization ID:", userData.organizationId);
+        setUserProfile(userData);
+        return;
+      }
+      
+      // Try users collection with userUID query
+      const usersQuery = query(collection(db, "users"), where("userUID", "==", uid));
+      const querySnapshot = await getDocs(usersQuery);
+      
+      if (!querySnapshot.empty) {
+        const userData = querySnapshot.docs[0].data() as User;
+        console.log("Found user by userUID query in users collection:", userData);
         console.log("Organization ID:", userData.organizationId);
         setUserProfile(userData);
         return;
@@ -206,5 +207,3 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
-
-export { AuthProvider };
