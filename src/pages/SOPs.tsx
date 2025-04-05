@@ -4,17 +4,18 @@ import MainLayout from "@/components/Layout/MainLayout";
 import { usePDFCategoryViewModel } from "@/viewmodels/usePDFCategoryViewModel";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
+import { Plus, RefreshCw } from "lucide-react";
 import { SOPList } from "@/components/SOPs/SOPList";
 import { SOPUploadForm } from "@/components/SOPs/SOPUploadForm";
 import { Toaster } from "@/components/ui/toaster";
 import { useAuth } from "@/context/AuthContext";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
+import { Card } from "@/components/ui/card";
 
 const SOPs = () => {
   const { userProfile, currentUser, loading: authLoading } = useAuth();
-  const { categories, isLoading, error, deletePDF, refreshCategories } = usePDFCategoryViewModel();
+  const { categories, isLoading, error, deletePDF, refreshCategories, debugInfo } = usePDFCategoryViewModel();
   const [uploadSheetOpen, setUploadSheetOpen] = useState(false);
 
   useEffect(() => {
@@ -104,12 +105,43 @@ const SOPs = () => {
         </div>
 
         {/* Debug information */}
-        <div className="mb-4 p-4 bg-gray-100 rounded-md">
+        <Card className="mb-4 p-4 bg-amber-50 border-amber-200 rounded-md">
           <h3 className="font-semibold mb-2">Debug Information</h3>
-          <p><strong>Organization ID:</strong> {userProfile?.organizationId || "None"}</p>
-          <p><strong>User:</strong> {userProfile?.firstName} {userProfile?.lastName} ({userProfile?.userEmail})</p>
-          <p><strong>Categories found:</strong> {categories ? categories.length : 0}</p>
-        </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <p><strong>Organization ID:</strong> {userProfile?.organizationId || "None"}</p>
+              <p><strong>User:</strong> {userProfile?.firstName} {userProfile?.lastName} ({userProfile?.userEmail})</p>
+              <p><strong>Categories found:</strong> {categories ? categories.length : 0}</p>
+              <p><strong>Auth User ID:</strong> {currentUser?.uid || "Not logged in"}</p>
+            </div>
+            <div>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={refreshCategories} 
+                className="flex gap-2 mb-2"
+              >
+                <RefreshCw className="h-4 w-4" /> Refresh Data
+              </Button>
+              <p><strong>Collection Statuses:</strong></p>
+              {debugInfo && debugInfo.collections && (
+                <ul className="text-xs">
+                  <li>sopCategories: {debugInfo.collections.sopCategories?.count || 0} items</li>
+                  <li>pdfCategories: {debugInfo.collections.pdfCategories?.count || 0} items</li>
+                  {debugInfo.collections.pdfCategories?.error && (
+                    <li className="text-red-500">Error: {debugInfo.collections.pdfCategories.error}</li>
+                  )}
+                </ul>
+              )}
+            </div>
+          </div>
+          <details className="mt-2">
+            <summary className="cursor-pointer text-sm text-blue-600">Show Raw Debug Data</summary>
+            <pre className="mt-2 p-2 bg-gray-100 rounded text-xs overflow-auto max-h-40">
+              {JSON.stringify(debugInfo, null, 2)}
+            </pre>
+          </details>
+        </Card>
 
         <SOPList 
           categories={categories}
