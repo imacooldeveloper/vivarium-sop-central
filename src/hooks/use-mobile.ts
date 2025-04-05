@@ -23,4 +23,5 @@ export function useMobile() {
 }
 
 // For compatibility with existing imports
+export const useIsMobile = useMobile;
 export default useMobile;
