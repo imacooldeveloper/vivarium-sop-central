@@ -16,8 +16,13 @@ export const usePDFCategoryViewModel = () => {
 
   useEffect(() => {
     const fetchCategories = async () => {
-      if (!userProfile?.organizationId) return;
+      if (!userProfile?.organizationId) {
+        console.log("No organization ID available", userProfile);
+        setIsLoading(false);
+        return;
+      }
 
+      console.log("Fetching categories with organizationId:", userProfile.organizationId);
       setIsLoading(true);
       try {
         // Fetch SOP categories
@@ -27,6 +32,8 @@ export const usePDFCategoryViewModel = () => {
         );
         
         const sopCategoriesSnapshot = await getDocs(sopCategoriesQuery);
+        console.log("SOP categories found:", sopCategoriesSnapshot.docs.length);
+        
         const sopCategoriesData = sopCategoriesSnapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data()
@@ -41,6 +48,8 @@ export const usePDFCategoryViewModel = () => {
         );
         
         const pdfSnapshot = await getDocs(pdfQuery);
+        console.log("PDF documents found:", pdfSnapshot.docs.length);
+        
         const pdfData = pdfSnapshot.docs.map(doc => {
           const data = doc.data();
           // Convert Firestore Timestamp to JavaScript Date if exists

@@ -12,7 +12,9 @@ import {
   Folder, 
   Edit, 
   Trash2,
-  Plus
+  Plus,
+  AlertCircle,
+  Loader2
 } from 'lucide-react';
 import { usePDFCategoryViewModel } from '@/viewmodels/usePDFCategoryViewModel';
 import { PDFCategory, SOPCategory } from '@/types';
@@ -29,6 +31,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/AuthContext';
 import SOPUploadDialog from '@/components/SOPs/SOPUploadDialog';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 const SOPs = () => {
   const { userProfile } = useAuth();
@@ -77,11 +80,37 @@ const SOPs = () => {
     }
   };
 
+  // Render debug info in development
+  const renderDebugInfo = () => {
+    if (process.env.NODE_ENV !== 'development') return null;
+    
+    return (
+      <details className="mb-4 p-2 border border-gray-200 rounded text-xs">
+        <summary className="font-mono cursor-pointer">Debug Info</summary>
+        <div className="p-2 bg-gray-50 mt-2 rounded">
+          <p>Organization ID: {userProfile?.organizationId || 'Not available'}</p>
+          <p>Categories loaded: {categories?.length || 0}</p>
+          <p>SOP Categories loaded: {sopCategories?.length || 0}</p>
+          <p>Loading state: {isLoading ? 'true' : 'false'}</p>
+          <p>Error: {error ? error.message : 'None'}</p>
+        </div>
+      </details>
+    );
+  };
+
   if (error) {
     return (
       <MainLayout>
         <div className="p-6">
-          <h2 className="text-lg font-bold text-red-600">Error loading SOPs: {error.message}</h2>
+          {renderDebugInfo()}
+          <Alert variant="destructive" className="mb-6">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Error</AlertTitle>
+            <AlertDescription>
+              Failed to load SOPs: {error.message}
+            </AlertDescription>
+          </Alert>
+          <Button onClick={() => window.location.reload()}>Retry</Button>
         </div>
       </MainLayout>
     );
@@ -90,6 +119,8 @@ const SOPs = () => {
   return (
     <MainLayout>
       <div className="space-y-6">
+        {renderDebugInfo()}
+
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold tracking-tight">Standard Operating Procedures</h1>
@@ -131,7 +162,10 @@ const SOPs = () => {
             <CardContent className="p-0">
               <ScrollArea className="h-[60vh] p-2">
                 {isLoading ? (
-                  <div className="p-4">Loading categories...</div>
+                  <div className="p-4 flex items-center justify-center">
+                    <Loader2 className="h-5 w-5 animate-spin mr-2" />
+                    <span>Loading categories...</span>
+                  </div>
                 ) : sopCategories?.length ? (
                   <div className="space-y-1">
                     {sopCategories.map((category: SOPCategory) => (
@@ -167,7 +201,10 @@ const SOPs = () => {
             </CardHeader>
             <CardContent>
               {isLoading ? (
-                <div className="text-center py-8">Loading SOPs...</div>
+                <div className="text-center py-8 flex flex-col items-center justify-center space-y-2">
+                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                  <p>Loading SOPs...</p>
+                </div>
               ) : filteredCategories?.length ? (
                 <Table>
                   <TableHeader>
@@ -192,6 +229,15 @@ const SOPs = () => {
                           <TableCell>{pdf.nameOfCategory}</TableCell>
                           <TableCell>{pdf.SOPForStaffTittle}</TableCell>
                           <TableCell className="space-x-2">
+                            <a 
+                              href={pdf.pdfURL} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                            >
+                              <Button variant="ghost" size="icon">
+                                <FileText className="h-4 w-4" />
+                              </Button>
+                            </a>
                             <Button variant="ghost" size="icon">
                               <Edit className="h-4 w-4" />
                             </Button>
@@ -214,11 +260,15 @@ const SOPs = () => {
                   <p className="text-muted-foreground max-w-md mx-auto">
                     {searchTerm 
                       ? "No SOPs match your search criteria" 
-                      : "Get started by uploading your first SOP"}
+                      : !userProfile?.organizationId 
+                        ? "You need to be part of an organization to view SOPs" 
+                        : "Get started by uploading your first SOP"}
                   </p>
-                  <Button onClick={() => setIsUploadDialogOpen(true)}>
-                    <Plus className="mr-2 h-4 w-4" /> Add SOP
-                  </Button>
+                  {userProfile?.organizationId && (
+                    <Button onClick={() => setIsUploadDialogOpen(true)}>
+                      <Plus className="mr-2 h-4 w-4" /> Add SOP
+                    </Button>
+                  )}
                 </div>
               )}
             </CardContent>
