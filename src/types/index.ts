@@ -82,7 +82,10 @@ export interface PDFCategory {
   SOPForStaffTittle: string;
   pdfName: string;
   pdfURL?: string;
+  quizCategoryID: string; // Added this property to match what's being used
   organizationId: string;
+  uploadedBy?: string;
+  uploadedAt?: Date;
 }
 
 export interface SOPCategory {
