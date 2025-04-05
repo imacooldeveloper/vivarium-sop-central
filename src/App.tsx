@@ -10,6 +10,7 @@ import NotFound from "./pages/NotFound";
 import Login from "./pages/Auth/Login";
 import Register from "./pages/Auth/Register";
 import { Suspense } from "react";
+import SOPs from "./pages/SOPs";
 
 const queryClient = new QueryClient();
 
@@ -39,6 +40,7 @@ const AuthRoutes = () => (
         <ProtectedRoute>
           <Routes>
             <Route path="/" element={<Index />} />
+            <Route path="/sops" element={<SOPs />} />
             {/* Add more routes here */}
             <Route path="*" element={<NotFound />} />
           </Routes>
