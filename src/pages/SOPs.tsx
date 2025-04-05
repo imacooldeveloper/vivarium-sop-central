@@ -18,9 +18,8 @@ const SOPs = () => {
   const [uploadSheetOpen, setUploadSheetOpen] = useState(false);
 
   useEffect(() => {
-    if (userProfile?.organizationId) {
-      console.log("User organization ID:", userProfile.organizationId);
-    }
+    console.log("SOPs component - Current user profile:", userProfile);
+    console.log("SOPs component - Organization ID:", userProfile?.organizationId);
   }, [userProfile]);
 
   const handleDeletePDF = async (id: string) => {
@@ -67,6 +66,13 @@ const SOPs = () => {
               Your user account is not associated with any organization.
               {currentUser && <span> Current UID: {currentUser.uid}</span>}
             </p>
+            <pre className="mt-4 bg-gray-100 p-4 rounded text-sm text-left overflow-auto">
+              {JSON.stringify({
+                uid: currentUser?.uid,
+                email: currentUser?.email,
+                profile: userProfile
+              }, null, 2)}
+            </pre>
           </div>
         </div>
       </MainLayout>
@@ -95,6 +101,14 @@ const SOPs = () => {
               <SOPUploadForm onUploadComplete={handleUploadComplete} />
             </SheetContent>
           </Sheet>
+        </div>
+
+        {/* Debug information */}
+        <div className="mb-4 p-4 bg-gray-100 rounded-md">
+          <h3 className="font-semibold mb-2">Debug Information</h3>
+          <p><strong>Organization ID:</strong> {userProfile?.organizationId || "None"}</p>
+          <p><strong>User:</strong> {userProfile?.firstName} {userProfile?.lastName} ({userProfile?.userEmail})</p>
+          <p><strong>Categories found:</strong> {categories ? categories.length : 0}</p>
         </div>
 
         <SOPList 

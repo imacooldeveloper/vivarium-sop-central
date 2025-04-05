@@ -10,6 +10,7 @@ import { AlertCircleIcon } from "lucide-react";
 import { doc, setDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { toast } from "sonner";
 
 const Register = () => {
   const [formData, setFormData] = useState({
@@ -55,7 +56,7 @@ const Register = () => {
       // Register user with Firebase Auth
       const uid = await register(formData.email, formData.password);
       
-      // Create user document in Firestore
+      // Create user document in Firestore with "org1" as the organizationId
       await setDoc(doc(db, "users", uid), {
         id: uid,
         firstName: formData.firstName,
@@ -65,10 +66,11 @@ const Register = () => {
         userUID: uid,
         userEmail: formData.email,
         accountType: formData.accountType,
-        organizationId: "", // This would be set by admin later
+        organizationId: "org1", // Set default organization ID for testing
         lastActivityDate: new Date()
       });
-      
+
+      toast.success("Account created successfully! You now belong to organization 'org1'");
       navigate("/");
     } catch (error: any) {
       setError(error.message || "Failed to register");

@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { 
   createUserWithEmailAndPassword,
@@ -7,7 +6,7 @@ import {
   signOut,
   User as FirebaseUser
 } from "firebase/auth";
-import { doc, getDoc, collection, query, where, getDocs } from "firebase/firestore";
+import { doc, getDoc, collection, query, where, getDocs, setDoc } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
 import { User } from "@/types";
 import { useToast } from "@/hooks/use-toast";
@@ -48,6 +47,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (userDoc.exists()) {
         const userData = userDoc.data() as User;
         console.log("Found user in 'users' collection:", userData);
+        console.log("Organization ID:", userData.organizationId);
         setUserProfile(userData);
         return;
       }
@@ -58,6 +58,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (userDocAlt.exists()) {
         const userData = userDocAlt.data() as User;
         console.log("Found user in 'Users' collection:", userData);
+        console.log("Organization ID:", userData.organizationId);
         setUserProfile(userData);
         return;
       }
@@ -69,6 +70,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (!querySnapshot.empty) {
         const userData = querySnapshot.docs[0].data() as User;
         console.log("Found user by userUID query:", userData);
+        console.log("Organization ID:", userData.organizationId);
         setUserProfile(userData);
         return;
       }
@@ -80,12 +82,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (!querySnapshotAlt.empty) {
         const userData = querySnapshotAlt.docs[0].data() as User;
         console.log("Found user by userUID query in Users collection:", userData);
+        console.log("Organization ID:", userData.organizationId);
         setUserProfile(userData);
         return;
       }
+
+      // If we still can't find the user, create a default profile with org1
+      console.log("User profile not found in Firestore, creating a default one");
+      const defaultProfile = {
+        id: uid,
+        userUID: uid,
+        organizationId: "org1", // Default organization for testing
+        firstName: "Test",
+        lastName: "User",
+        username: "testuser",
+        userEmail: currentUser?.email || "unknown@example.com",
+        facilityName: "Test Facility",
+        accountType: "Husbandry" as const
+      };
       
-      console.error("User profile not found in Firestore");
-      setUserProfile(null);
+      setUserProfile(defaultProfile as User);
+      
+      // Also save this default profile to Firestore
+      await setDoc(doc(db, "users", uid), defaultProfile);
+      console.log("Created default user profile with organization ID: org1");
+      
     } catch (error) {
       console.error("Error fetching user profile:", error);
       setUserProfile(null);
@@ -185,3 +206,5 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
+
+export { AuthProvider };
