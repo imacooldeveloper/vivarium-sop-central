@@ -5,6 +5,7 @@ import { ref, deleteObject } from 'firebase/storage';
 import { db, storage } from '@/lib/firebase';
 import { PDFCategory, SOPCategory } from '@/types';
 import { useAuth } from '@/context/AuthContext';
+import { toast } from 'sonner';
 
 export const usePDFCategoryViewModel = () => {
   const [categories, setCategories] = useState<PDFCategory[]>([]);
@@ -56,7 +57,7 @@ export const usePDFCategoryViewModel = () => {
           return {
             id: doc.id,
             ...data,
-            uploadedAt: data.uploadedAt ? (data.uploadedAt as Timestamp).toDate() : undefined
+            uploadedAt: data.uploadedAt instanceof Timestamp ? data.uploadedAt.toDate() : data.uploadedAt
           };
         }) as PDFCategory[];
         
@@ -65,6 +66,7 @@ export const usePDFCategoryViewModel = () => {
       } catch (err) {
         console.error('Error fetching categories:', err);
         setError(err instanceof Error ? err : new Error('Failed to fetch categories'));
+        toast.error("Failed to load SOP categories. Please try again.");
       } finally {
         setIsLoading(false);
       }
@@ -92,10 +94,69 @@ export const usePDFCategoryViewModel = () => {
       // Update local state
       setCategories(prev => prev.filter(pdf => pdf.id !== pdfId));
       
+      toast.success("PDF deleted successfully");
       return true;
     } catch (err) {
       console.error('Error deleting PDF:', err);
+      toast.error("Failed to delete PDF. Please try again.");
       throw err;
+    }
+  };
+
+  const refreshCategories = () => {
+    setIsLoading(true);
+    setError(null);
+    // Force a refetch by changing the dependency that the useEffect watches
+    if (userProfile?.organizationId) {
+      // This will trigger the useEffect to run again
+      const fetchData = async () => {
+        try {
+          // Fetch SOP categories
+          const sopCategoriesQuery = query(
+            collection(db, 'sopCategories'),
+            where('organizationId', '==', userProfile.organizationId)
+          );
+          
+          const sopCategoriesSnapshot = await getDocs(sopCategoriesQuery);
+          console.log("SOP categories refreshed:", sopCategoriesSnapshot.docs.length);
+          
+          const sopCategoriesData = sopCategoriesSnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+          })) as SOPCategory[];
+          
+          setSopCategories(sopCategoriesData);
+          
+          // Fetch PDF documents
+          const pdfQuery = query(
+            collection(db, 'pdfCategories'),
+            where('organizationId', '==', userProfile.organizationId)
+          );
+          
+          const pdfSnapshot = await getDocs(pdfQuery);
+          console.log("PDF documents refreshed:", pdfSnapshot.docs.length);
+          
+          const pdfData = pdfSnapshot.docs.map(doc => {
+            const data = doc.data();
+            // Convert Firestore Timestamp to JavaScript Date if exists
+            return {
+              id: doc.id,
+              ...data,
+              uploadedAt: data.uploadedAt instanceof Timestamp ? data.uploadedAt.toDate() : data.uploadedAt
+            };
+          }) as PDFCategory[];
+          
+          setCategories(pdfData);
+          toast.success("SOP list refreshed");
+        } catch (err) {
+          console.error('Error refreshing categories:', err);
+          setError(err instanceof Error ? err : new Error('Failed to refresh categories'));
+          toast.error("Failed to refresh SOPs. Please try again.");
+        } finally {
+          setIsLoading(false);
+        }
+      };
+      fetchData();
     }
   };
 
@@ -106,6 +167,7 @@ export const usePDFCategoryViewModel = () => {
     error,
     deletePDF,
     selectedCategory,
-    setSelectedCategory
+    setSelectedCategory,
+    refreshCategories
   };
 };
