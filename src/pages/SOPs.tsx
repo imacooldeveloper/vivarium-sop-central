@@ -1,6 +1,6 @@
 
-import React, { useState } from "react";
-import { MainLayout } from "@/components/Layout/MainLayout";
+import React, { useState, useEffect } from "react";
+import MainLayout from "@/components/Layout/MainLayout";
 import { usePDFCategoryViewModel } from "@/viewmodels/usePDFCategoryViewModel";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
@@ -8,10 +8,20 @@ import { Plus } from "lucide-react";
 import { SOPList } from "@/components/SOPs/SOPList";
 import { SOPUploadForm } from "@/components/SOPs/SOPUploadForm";
 import { Toaster } from "@/components/ui/toaster";
+import { useAuth } from "@/context/AuthContext";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { AlertCircle } from "lucide-react";
 
 const SOPs = () => {
+  const { userProfile, currentUser, loading: authLoading } = useAuth();
   const { categories, isLoading, error, deletePDF, refreshCategories } = usePDFCategoryViewModel();
   const [uploadSheetOpen, setUploadSheetOpen] = useState(false);
+
+  useEffect(() => {
+    if (userProfile?.organizationId) {
+      console.log("User organization ID:", userProfile.organizationId);
+    }
+  }, [userProfile]);
 
   const handleDeletePDF = async (id: string) => {
     if (window.confirm("Are you sure you want to delete this SOP?")) {
@@ -27,6 +37,41 @@ const SOPs = () => {
     setUploadSheetOpen(false);
     refreshCategories();
   };
+
+  // Show loading state while auth is being checked
+  if (authLoading) {
+    return (
+      <MainLayout>
+        <div className="container mx-auto p-4 flex justify-center items-center min-h-[80vh]">
+          <p>Loading user data...</p>
+        </div>
+      </MainLayout>
+    );
+  }
+
+  // Show message if user is not part of an organization
+  if (!authLoading && (!userProfile || !userProfile.organizationId)) {
+    return (
+      <MainLayout>
+        <div className="container mx-auto p-4">
+          <Alert variant="destructive" className="mb-6">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Access Required</AlertTitle>
+            <AlertDescription>
+              You need to be part of an organization to view SOPs. Please contact your administrator.
+            </AlertDescription>
+          </Alert>
+          <div className="bg-white rounded-lg shadow-sm p-8 text-center">
+            <h2 className="text-2xl font-bold mb-4">No Organization Access</h2>
+            <p className="text-gray-600">
+              Your user account is not associated with any organization.
+              {currentUser && <span> Current UID: {currentUser.uid}</span>}
+            </p>
+          </div>
+        </div>
+      </MainLayout>
+    );
+  }
 
   return (
     <MainLayout>

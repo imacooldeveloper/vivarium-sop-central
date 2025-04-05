@@ -7,7 +7,7 @@ import {
   signOut,
   User as FirebaseUser
 } from "firebase/auth";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDoc, collection, query, where, getDocs } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
 import { User } from "@/types";
 import { useToast } from "@/hooks/use-toast";
@@ -40,13 +40,52 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Fetch user profile data from Firestore
   const fetchUserProfile = async (uid: string) => {
     try {
+      console.log("Fetching user profile for UID:", uid);
+      
+      // First try to fetch from the 'users' collection
       const userDoc = await getDoc(doc(db, "users", uid));
+      
       if (userDoc.exists()) {
-        setUserProfile(userDoc.data() as User);
-      } else {
-        console.error("User profile not found in Firestore");
-        setUserProfile(null);
+        const userData = userDoc.data() as User;
+        console.log("Found user in 'users' collection:", userData);
+        setUserProfile(userData);
+        return;
       }
+      
+      // If not found in 'users', try the 'Users' collection (case sensitivity matters in Firestore)
+      const userDocAlt = await getDoc(doc(db, "Users", uid));
+      
+      if (userDocAlt.exists()) {
+        const userData = userDocAlt.data() as User;
+        console.log("Found user in 'Users' collection:", userData);
+        setUserProfile(userData);
+        return;
+      }
+      
+      // If still not found, try querying by userUID field
+      const usersQuery = query(collection(db, "users"), where("userUID", "==", uid));
+      const querySnapshot = await getDocs(usersQuery);
+      
+      if (!querySnapshot.empty) {
+        const userData = querySnapshot.docs[0].data() as User;
+        console.log("Found user by userUID query:", userData);
+        setUserProfile(userData);
+        return;
+      }
+      
+      // Try Users collection with userUID query
+      const usersQueryAlt = query(collection(db, "Users"), where("userUID", "==", uid));
+      const querySnapshotAlt = await getDocs(usersQueryAlt);
+      
+      if (!querySnapshotAlt.empty) {
+        const userData = querySnapshotAlt.docs[0].data() as User;
+        console.log("Found user by userUID query in Users collection:", userData);
+        setUserProfile(userData);
+        return;
+      }
+      
+      console.error("User profile not found in Firestore");
+      setUserProfile(null);
     } catch (error) {
       console.error("Error fetching user profile:", error);
       setUserProfile(null);
@@ -74,7 +113,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = async (email: string, password: string) => {
     try {
       setLoading(true);
-      await signInWithEmailAndPassword(auth, email, password);
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      await fetchUserProfile(userCredential.user.uid);
+      
       toast({
         title: "Login successful",
         description: "Welcome back!",
