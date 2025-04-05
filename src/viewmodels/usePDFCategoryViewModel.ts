@@ -244,7 +244,7 @@ export const usePDFCategoryViewModel = () => {
         try {
           // The fetchCategories logic is already in the useEffect
           // This is a bit of duplication, but for simplicity we'll repeat it
-          const debug = {
+          const debug: any = {
             organizationId: userProfile.organizationId,
             collections: {
               sopCategories: { attempted: true, count: 0, error: null },
@@ -295,7 +295,7 @@ export const usePDFCategoryViewModel = () => {
               
               setCategories(capitalizedData);
               debug.collections.pdfCategories.count = testSnapshot.docs.length;
-              debug.capitalizedIDField = true;
+              debug.hasCapitalizedIDField = true; // Fixed property name
             }
           }
           

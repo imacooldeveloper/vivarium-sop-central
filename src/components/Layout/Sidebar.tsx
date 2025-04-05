@@ -1,96 +1,84 @@
 
-import React from 'react';
-import { NavLink } from 'react-router-dom';
-import { useAuth } from '@/context/AuthContext';
-import { 
-  HomeIcon, 
-  BookOpenIcon, 
-  BuildingIcon, 
-  ClipboardListIcon, 
-  UsersIcon, 
-  Settings2Icon,
-  LogOutIcon,
-  GraduationCapIcon
-} from 'lucide-react';
+import React from "react";
+import { useLocation, Link } from "react-router-dom";
+import { cn } from "@/lib/utils";
+import { useAuth } from "@/context/AuthContext";
+import { Button } from "@/components/ui/button";
+import useMobile from "@/hooks/use-mobile";
+import { Home, FileText, LogOut, BookOpen, LayoutDashboard, Settings } from "lucide-react";
 
-const Sidebar: React.FC = () => {
-  const { logout, userProfile } = useAuth();
-  const isAdmin = userProfile?.accountType === 'Admin';
-  
+interface SidebarProps {
+  className?: string;
+}
+
+const Sidebar = ({ className }: SidebarProps) => {
+  const { pathname } = useLocation();
+  const { logout } = useAuth();
+  const isMobile = useMobile();
+
   const handleLogout = async () => {
     try {
       await logout();
+      // Redirect is handled by the auth provider
     } catch (error) {
-      console.error('Logout error:', error);
+      console.error("Logout error:", error);
     }
   };
 
   return (
-    <div className="w-64 bg-white border-r border-gray-200 h-full flex flex-col">
-      <div className="p-6 border-b border-gray-200">
-        <h1 className="text-xl font-bold text-primary-700">Vivarium SOP</h1>
-        <p className="text-sm text-gray-500 mt-1">
-          {userProfile?.facilityName || 'Research Facility'}
-        </p>
+    <aside
+      className={cn(
+        "bg-slate-50 border-r border-slate-200 h-screen w-64 flex-shrink-0",
+        isMobile ? "hidden" : "block",
+        className
+      )}
+    >
+      <div className="h-full flex flex-col p-4">
+        <div className="flex items-center justify-center mb-8 p-2">
+          <Link to="/" className="flex items-center">
+            <BookOpen className="h-6 w-6 text-primary mr-2" />
+            <span className="text-lg font-bold text-primary">VivariumSOP</span>
+          </Link>
+        </div>
+
+        <nav className="flex flex-col gap-1 flex-1">
+          <Link to="/dashboard">
+            <Button
+              variant={pathname === "/dashboard" ? "default" : "ghost"}
+              className="w-full justify-start"
+            >
+              <LayoutDashboard className="mr-2 h-5 w-5" />
+              Dashboard
+            </Button>
+          </Link>
+          <Link to="/sops">
+            <Button
+              variant={pathname === "/sops" ? "default" : "ghost"}
+              className="w-full justify-start"
+            >
+              <FileText className="mr-2 h-5 w-5" />
+              SOPs
+            </Button>
+          </Link>
+          <Link to="/admin">
+            <Button
+              variant={pathname === "/admin" ? "default" : "ghost"}
+              className="w-full justify-start"
+            >
+              <Settings className="mr-2 h-5 w-5" />
+              Admin
+            </Button>
+          </Link>
+        </nav>
+
+        <div className="mt-auto">
+          <Button variant="ghost" className="w-full justify-start" onClick={handleLogout}>
+            <LogOut className="mr-2 h-5 w-5" />
+            Sign out
+          </Button>
+        </div>
       </div>
-      
-      <nav className="flex-1 overflow-y-auto p-4 space-y-1">
-        <NavLink to="/" className={({isActive}) => `sidebar-item ${isActive ? 'active' : ''}`}>
-          <HomeIcon className="w-5 h-5" />
-          <span>Dashboard</span>
-        </NavLink>
-
-        <NavLink to="/sops" className={({isActive}) => `sidebar-item ${isActive ? 'active' : ''}`}>
-          <BookOpenIcon className="w-5 h-5" />
-          <span>SOPs</span>
-        </NavLink>
-
-        <NavLink to="/quizzes" className={({isActive}) => `sidebar-item ${isActive ? 'active' : ''}`}>
-          <ClipboardListIcon className="w-5 h-5" />
-          <span>Quizzes</span>
-        </NavLink>
-
-        <NavLink to="/certifications" className={({isActive}) => `sidebar-item ${isActive ? 'active' : ''}`}>
-          <GraduationCapIcon className="w-5 h-5" />
-          <span>Certifications</span>
-        </NavLink>
-
-        {isAdmin && (
-          <>
-            <div className="pt-4 pb-2">
-              <p className="px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                Admin
-              </p>
-            </div>
-
-            <NavLink to="/users" className={({isActive}) => `sidebar-item ${isActive ? 'active' : ''}`}>
-              <UsersIcon className="w-5 h-5" />
-              <span>Users</span>
-            </NavLink>
-
-            <NavLink to="/buildings" className={({isActive}) => `sidebar-item ${isActive ? 'active' : ''}`}>
-              <BuildingIcon className="w-5 h-5" />
-              <span>Buildings</span>
-            </NavLink>
-
-            <NavLink to="/settings" className={({isActive}) => `sidebar-item ${isActive ? 'active' : ''}`}>
-              <Settings2Icon className="w-5 h-5" />
-              <span>Settings</span>
-            </NavLink>
-          </>
-        )}
-      </nav>
-      
-      <div className="p-4 border-t border-gray-200">
-        <button 
-          onClick={handleLogout}
-          className="sidebar-item w-full justify-center"
-        >
-          <LogOutIcon className="w-5 h-5" />
-          <span>Logout</span>
-        </button>
-      </div>
-    </div>
+    </aside>
   );
 };
 
