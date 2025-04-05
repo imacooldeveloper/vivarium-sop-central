@@ -151,7 +151,7 @@ export const SOPList = ({ categories, isLoading, error, onDelete, onRefresh }: S
               
               <CardContent className="pb-2 flex-grow">
                 <p className="text-sm line-clamp-3">
-                  {sop.SOPForStaffTittle || "No description available"}
+                  {sop.subcategory || "No subcategory specified"}
                 </p>
               </CardContent>
               

@@ -5,6 +5,7 @@ import Dashboard from "./pages/Dashboard";
 import Login from "./pages/Auth/Login";
 import Register from "./pages/Auth/Register";
 import SOPs from "./pages/SOPs";
+import Quizzes from "./pages/Quizzes";
 import NotFound from "./pages/NotFound";
 import Admin from "./pages/Admin";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -24,6 +25,7 @@ function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             <Route path="/sops" element={<SOPs />} />
+            <Route path="/quizzes" element={<Quizzes />} />
             <Route path="/admin" element={<Admin />} />
             <Route path="*" element={<NotFound />} />
           </Routes>

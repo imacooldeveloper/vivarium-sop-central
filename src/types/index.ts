@@ -9,6 +9,12 @@ export interface User {
   userEmail: string;
   facilityName: string;
   accountType: "Admin" | "Husbandry" | "Supervisor" | "Veterinarian";
+  quizScores?: {
+    quizId: string;
+    score: number;
+    passed: boolean;
+    completedAt: Date;
+  }[];
 }
 
 export interface SOPCategory {
