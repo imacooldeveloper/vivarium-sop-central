@@ -14,18 +14,18 @@ export interface User {
   quizScores?: UserQuizScore[];
   assignedFloors?: string[];
   organizationId: string;
-  lastActivityDate?: Date;
+  lastActivityDate?: Date; // Firestore Timestamp converted to Date
 }
 
 export interface UserQuizScore {
   quizID: string;
   scores: number[];
-  completionDates: Date[];
-  dueDates?: Record<string, Date | null>;
-  nextRenewalDates?: Record<string, Date | null>;
+  completionDates: Date[]; // Firestore Timestamp converted to Date
+  dueDates?: Record<string, Date | null>; // Firestore Timestamp converted to Date
+  nextRenewalDates?: Record<string, Date | null>; // Firestore Timestamp converted to Date
   acknowledgmentStatus?: {
     acknowledged: boolean;
-    acknowledgedDate: Date;
+    acknowledgedDate: Date; // Firestore Timestamp converted to Date
     readingTime?: number;
     signature?: string;
   };
@@ -63,7 +63,7 @@ export interface Building {
   notes?: string;
   isActive: boolean;
   organizationId: string;
-  floors: Floor[];
+  // floors removed as they should be stored in their own collection
 }
 
 export interface Floor {
@@ -72,7 +72,7 @@ export interface Floor {
   level: number;
   sections: string[];
   isRestricted: boolean;
-  buildingId: string;
+  buildingId: string; // Reference to parent building
   organizationId: string;
 }
 
@@ -82,10 +82,10 @@ export interface PDFCategory {
   SOPForStaffTittle: string;
   pdfName: string;
   pdfURL?: string;
-  quizCategoryID: string; // Added this property to match what's being used
+  quizCategoryID?: string; // Optional - only if this PDF has a quiz linked
   organizationId: string;
-  uploadedBy?: string;
-  uploadedAt?: Date;
+  uploadedBy?: string; // Firebase UID of user who uploaded
+  uploadedAt?: Date; // Firestore Timestamp converted to Date
 }
 
 export interface SOPCategory {
@@ -110,11 +110,11 @@ export interface Quiz {
   verificationType: 'quiz' | 'acknowledgment' | 'both';
   acknowledgmentText?: string;
   questions?: Question[];
-  dateCreated?: Date;
-  dueDate?: Date;
+  dateCreated?: Date; // Firestore Timestamp converted to Date
+  dueDate?: Date; // Firestore Timestamp converted to Date
   renewalFrequency?: 'quarterly' | 'yearly' | 'custom';
-  nextRenewalDates?: Date;
-  customRenewalDate?: Date;
+  nextRenewalDates?: Date; // Firestore Timestamp converted to Date
+  customRenewalDate?: Date; // Firestore Timestamp converted to Date
   acknowledgmentMetadata?: {
     requiredReadingTime?: number;
     acknowledgmentStatement: string;

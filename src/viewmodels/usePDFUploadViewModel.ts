@@ -1,7 +1,7 @@
 
 import { useState } from 'react';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { collection, addDoc } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { storage, db } from '@/lib/firebase';
 import { useAuth } from '@/context/AuthContext';
 
@@ -37,10 +37,10 @@ export const usePDFUploadViewModel = () => {
         SOPForStaffTittle: subcategoryTitle,
         pdfName: pdfName,
         pdfURL: downloadURL,
-        quizCategoryID: quizCategoryID,
+        quizCategoryID: quizCategoryID || null, // Make it nullable if not provided
         organizationId: userProfile.organizationId,
         uploadedBy: userProfile.id,
-        uploadedAt: new Date(),
+        uploadedAt: serverTimestamp(), // Use server timestamp for consistency
       });
       
       return docRef.id;

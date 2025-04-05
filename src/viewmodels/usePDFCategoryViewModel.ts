@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from 'react';
-import { collection, query, where, getDocs, deleteDoc, doc } from 'firebase/firestore';
+import { collection, query, where, getDocs, deleteDoc, doc, Timestamp } from 'firebase/firestore';
 import { ref, deleteObject } from 'firebase/storage';
 import { db, storage } from '@/lib/firebase';
 import { PDFCategory, SOPCategory } from '@/types';
@@ -41,10 +41,15 @@ export const usePDFCategoryViewModel = () => {
         );
         
         const pdfSnapshot = await getDocs(pdfQuery);
-        const pdfData = pdfSnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        })) as PDFCategory[];
+        const pdfData = pdfSnapshot.docs.map(doc => {
+          const data = doc.data();
+          // Convert Firestore Timestamp to JavaScript Date if exists
+          return {
+            id: doc.id,
+            ...data,
+            uploadedAt: data.uploadedAt ? (data.uploadedAt as Timestamp).toDate() : undefined
+          };
+        }) as PDFCategory[];
         
         setCategories(pdfData);
         setError(null);
