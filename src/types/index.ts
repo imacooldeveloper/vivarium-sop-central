@@ -1,3 +1,4 @@
+
 export interface UserProfile {
   id: string;
   firstName: string;
@@ -7,12 +8,23 @@ export interface UserProfile {
   role: string;
 }
 
+// Add User type for related components
+export interface User {
+  id: string;
+  email: string;
+  firstName?: string;
+  lastName?: string;
+  role?: string;
+  organizationId?: string;
+}
+
 export interface SOPCategory {
   id: string;
   nameOfCategory: string;
   organizationId: string;
   createdBy: string;
   createdAt: any; // Timestamp
+  SOPForStaffTittle?: string; // Fixed property to match existing references
 }
 
 // Adding folder type
@@ -36,4 +48,38 @@ export interface PDFCategory {
   uploadedBy: string;
   uploadedAt: any;
   folderId?: string | null;
+  categoryId?: string; // Added for CategoryManager compatibility
+}
+
+// Add Quiz type for components that reference it
+export interface Quiz {
+  id: string;
+  title: string;
+  description: string;
+  category?: string;
+  questions?: QuizQuestion[];
+  createdBy?: string;
+  createdAt?: any;
+  status?: 'draft' | 'published' | 'completed';
+  score?: number;
+  totalQuestions?: number;
+  timeLimit?: number;
+  passingScore?: number;
+  difficulty?: 'easy' | 'medium' | 'hard';
+  lastUpdated?: any;
+  organizationId?: string;
+  assignedTo?: string[];
+  dueDate?: any;
+}
+
+export interface QuizQuestion {
+  id: string;
+  text: string;
+  options: QuizOption[];
+  correctOptionId: string;
+}
+
+export interface QuizOption {
+  id: string;
+  text: string;
 }

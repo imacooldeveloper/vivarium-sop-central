@@ -15,6 +15,7 @@ import { db } from '@/lib/firebase';
 import { useAuth } from '@/context/AuthContext';
 import { toast } from 'sonner';
 import CreateFolderDialog from './CreateFolderDialog';
+import { Skeleton } from '../ui/skeleton';
 
 interface SOPUploadFormProps {
   onUploadComplete: () => void;
@@ -27,6 +28,7 @@ export const SOPUploadForm = ({ onUploadComplete }: SOPUploadFormProps) => {
   const [subcategoryTitle, setSubcategoryTitle] = useState('');
   const [folderId, setFolderId] = useState<string>('');
   const [folders, setFolders] = useState<Folder[]>([]);
+  const [isFetchingFolders, setIsFetchingFolders] = useState(true);
   const [createFolderDialogOpen, setCreateFolderDialogOpen] = useState(false);
   const { uploadPDF, isUploading, uploadProgress } = usePDFUploadViewModel();
   const { userProfile } = useAuth();
@@ -34,24 +36,48 @@ export const SOPUploadForm = ({ onUploadComplete }: SOPUploadFormProps) => {
   // Fetch folders when component mounts
   useEffect(() => {
     const fetchFolders = async () => {
-      if (!userProfile?.organizationId) return;
+      if (!userProfile?.organizationId) {
+        setIsFetchingFolders(false);
+        return;
+      }
       
+      setIsFetchingFolders(true);
       try {
+        // First try the 'sopFolders' collection
         const q = query(
           collection(db, 'sopFolders'),
           where('organizationId', '==', userProfile.organizationId)
         );
         
         const querySnapshot = await getDocs(q);
-        const folderList: Folder[] = querySnapshot.docs.map(doc => ({
+        let folderList: Folder[] = querySnapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data()
         })) as Folder[];
         
+        // If no results, try alternative collection name
+        if (folderList.length === 0) {
+          const altQuery = query(
+            collection(db, 'SOPFolders'),
+            where('organizationId', '==', userProfile.organizationId)
+          );
+          
+          const altSnapshot = await getDocs(altQuery);
+          if (altSnapshot.docs.length > 0) {
+            folderList = altSnapshot.docs.map(doc => ({
+              id: doc.id,
+              ...doc.data()
+            })) as Folder[];
+          }
+        }
+        
+        console.log("Retrieved folders for upload form:", folderList);
         setFolders(folderList);
       } catch (error) {
         console.error("Error fetching folders:", error);
         toast.error("Failed to load folders");
+      } finally {
+        setIsFetchingFolders(false);
       }
     };
 
@@ -177,23 +203,27 @@ export const SOPUploadForm = ({ onUploadComplete }: SOPUploadFormProps) => {
                   New Folder
                 </Button>
               </div>
-              <Select
-                value={folderId} 
-                onValueChange={setFolderId}
-                disabled={isUploading}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select a folder (optional)" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="">No folder (Root)</SelectItem>
-                  {folders.map((folder) => (
-                    <SelectItem key={folder.id} value={folder.id}>
-                      {folder.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              {isFetchingFolders ? (
+                <Skeleton className="h-10 w-full" />
+              ) : (
+                <Select
+                  value={folderId} 
+                  onValueChange={setFolderId}
+                  disabled={isUploading}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a folder (optional)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">No folder (Root)</SelectItem>
+                    {folders.map((folder) => (
+                      <SelectItem key={folder.id} value={folder.id}>
+                        {folder.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
             </div>
 
             <div className="grid w-full gap-1.5">

@@ -3,13 +3,14 @@ import { useState, useEffect } from 'react';
 import { collection, query, where, getDocs, deleteDoc, doc, Timestamp, DocumentData } from 'firebase/firestore';
 import { ref, deleteObject } from 'firebase/storage';
 import { db, storage } from '@/lib/firebase';
-import { PDFCategory, SOPCategory } from '@/types';
+import { PDFCategory, SOPCategory, Folder } from '@/types';
 import { useAuth } from '@/context/AuthContext';
 import { toast } from 'sonner';
 
 export const usePDFCategoryViewModel = () => {
   const [categories, setCategories] = useState<PDFCategory[]>([]);
   const [sopCategories, setSopCategories] = useState<SOPCategory[]>([]);
+  const [folders, setFolders] = useState<Folder[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
@@ -46,6 +47,11 @@ export const usePDFCategoryViewModel = () => {
               count: 0,
               error: null,
               results: []
+            },
+            sopFolders: {
+              attempted: true,
+              count: 0,
+              error: null
             }
           }
         };
@@ -72,27 +78,47 @@ export const usePDFCategoryViewModel = () => {
           debug.collections.sopCategories.error = err instanceof Error ? err.message : String(err);
         }
         
-        // Fetch SOP categories from "SOPCategory" collection (alternative casing)
+        // Fetch SOP folders
         try {
-          const sopCategoriesAltQuery = query(
-            collection(db, 'SOPCategory'),
+          const foldersQuery = query(
+            collection(db, 'sopFolders'),
             where('organizationId', '==', userProfile.organizationId)
           );
           
-          const sopCategoriesAltSnapshot = await getDocs(sopCategoriesAltQuery);
-          console.log("SOP categories found (SOPCategory):", sopCategoriesAltSnapshot.docs.length);
+          const foldersSnapshot = await getDocs(foldersQuery);
+          console.log("Folders found:", foldersSnapshot.docs.length);
           
-          if (sopCategoriesAltSnapshot.docs.length > 0) {
-            const sopCategoriesAltData = sopCategoriesAltSnapshot.docs.map(doc => ({
-              id: doc.id,
-              ...doc.data()
-            })) as SOPCategory[];
+          const foldersData = foldersSnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+          })) as Folder[];
+          
+          debug.collections.sopFolders.count = foldersSnapshot.docs.length;
+          setFolders(foldersData);
+          
+          if (foldersSnapshot.docs.length > 0) {
+            console.log("Sample folder data:", foldersSnapshot.docs[0].data());
+          } else {
+            // Try alternative collection name if no results
+            const altFoldersQuery = query(
+              collection(db, 'SOPFolders'),
+              where('organizationId', '==', userProfile.organizationId)
+            );
+            const altFoldersSnapshot = await getDocs(altFoldersQuery);
             
-            debug.collections.sopCategories.count += sopCategoriesAltSnapshot.docs.length;
-            setSopCategories(prev => [...prev, ...sopCategoriesAltData]);
+            if (altFoldersSnapshot.docs.length > 0) {
+              const altFoldersData = altFoldersSnapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data()
+              })) as Folder[];
+              
+              setFolders(altFoldersData);
+              console.log("Found folders in alternative collection:", altFoldersSnapshot.docs.length);
+            }
           }
         } catch (err) {
-          console.error('Error fetching from SOPCategory:', err);
+          console.error('Error fetching folders:', err);
+          debug.collections.sopFolders.error = err instanceof Error ? err.message : String(err);
         }
         
         // Array to collect all PDF documents from different collections
@@ -169,21 +195,46 @@ export const usePDFCategoryViewModel = () => {
         }
 
         // Last attempt - try with no filters to see if collection exists and has documents
-        try {
-          const pdfQueryNoFilter = query(collection(db, 'PDFCategory'));
-          const pdfSnapshotNoFilter = await getDocs(pdfQueryNoFilter);
-          console.log("PDF documents total (no filter):", pdfSnapshotNoFilter.docs.length);
-          
-          if (pdfSnapshotNoFilter.docs.length > 0) {
-            // Check what organizationId values exist in the collection
-            const orgIds = new Set(pdfSnapshotNoFilter.docs.map(doc => {
-              const data = doc.data();
-              return data.organizationId || data.organizationID;
-            }));
-            console.log("Available organizationIds in PDFCategory:", Array.from(orgIds));
+        if (allPdfs.length === 0) {
+          try {
+            const pdfQueryNoFilter = query(collection(db, 'PDFCategory'));
+            const pdfSnapshotNoFilter = await getDocs(pdfQueryNoFilter);
+            console.log("PDF documents total (no filter):", pdfSnapshotNoFilter.docs.length);
+            
+            if (pdfSnapshotNoFilter.docs.length > 0) {
+              // Check what organizationId values exist in the collection
+              const orgIds = new Set(pdfSnapshotNoFilter.docs.map(doc => {
+                const data = doc.data();
+                return data.organizationId || data.organizationID;
+              }));
+              console.log("Available organizationIds in PDFCategory:", Array.from(orgIds));
+              
+              // Try to match PDFs with current organization even if field name differs
+              const matchingPdfs = pdfSnapshotNoFilter.docs
+                .filter(doc => {
+                  const data = doc.data();
+                  return (data.organizationId === userProfile.organizationId || 
+                          data.organizationID === userProfile.organizationId);
+                })
+                .map(doc => {
+                  const data = doc.data();
+                  return {
+                    id: doc.id,
+                    ...data,
+                    uploadedAt: data.uploadedAt instanceof Timestamp ? data.uploadedAt.toDate() : data.uploadedAt,
+                    // Ensure organizationId is correctly set
+                    organizationId: userProfile.organizationId
+                  };
+                });
+              
+              if (matchingPdfs.length > 0) {
+                console.log("Found matching PDFs with flexible organizationId field:", matchingPdfs.length);
+                allPdfs = [...allPdfs, ...matchingPdfs];
+              }
+            }
+          } catch (err) {
+            console.error('Error fetching from PDFCategory with no filter:', err);
           }
-        } catch (err) {
-          console.error('Error fetching from PDFCategory with no filter:', err);
         }
         
         // Set all collected PDFs to state
@@ -248,14 +299,34 @@ export const usePDFCategoryViewModel = () => {
             organizationId: userProfile.organizationId,
             collections: {
               sopCategories: { attempted: true, count: 0, error: null },
-              pdfCategories: { attempted: true, count: 0, error: null, results: [] }
-            },
-            refreshTriggered: true
+              pdfCategories: { attempted: true, count: 0, error: null, results: [] },
+              refreshTriggered: true
+            }
           };
+          
+          // Fetch folders first
+          try {
+            const foldersQuery = query(
+              collection(db, 'sopFolders'),
+              where('organizationId', '==', userProfile.organizationId)
+            );
+            
+            const foldersSnapshot = await getDocs(foldersQuery);
+            console.log("Folders refreshed:", foldersSnapshot.docs.length);
+            
+            const foldersData = foldersSnapshot.docs.map(doc => ({
+              id: doc.id,
+              ...doc.data()
+            })) as Folder[];
+            
+            setFolders(foldersData);
+          } catch (err) {
+            console.error('Error refreshing folders:', err);
+          }
           
           // Just try PDFCategory this time for simplicity in the refresh
           const pdfQueryAlt = query(
-            collection(db, 'PDFCategory'),
+            collection(db, 'pdfCategories'),
             where('organizationId', '==', userProfile.organizationId)
           );
           
@@ -295,7 +366,7 @@ export const usePDFCategoryViewModel = () => {
               
               setCategories(capitalizedData);
               debug.collections.pdfCategories.count = testSnapshot.docs.length;
-              debug.hasCapitalizedIDField = true; // Fixed property name
+              debug.hasCapitalizedIDField = true;
             }
           }
           
@@ -317,6 +388,7 @@ export const usePDFCategoryViewModel = () => {
   return {
     categories,
     sopCategories,
+    folders,
     isLoading,
     error,
     deletePDF,

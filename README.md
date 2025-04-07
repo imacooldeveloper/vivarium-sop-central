@@ -1,73 +1,162 @@
-# Welcome to your Lovable project
 
-## Project info
+# Vivarium SOPs - Standard Operating Procedures Management System
 
-**URL**: https://lovable.dev/projects/c963a7b9-7ea7-4c36-9189-3b0aa86a7b68
+## Project Overview
 
-## How can I edit this code?
+Vivarium SOPs is a comprehensive web application designed to manage Standard Operating Procedures (SOPs) for research institutions, laboratories, and organizations working with vivariums. The system allows users to:
 
-There are several ways of editing your application.
+- Organize SOPs in folders for easy access
+- Upload and manage PDF documents
+- Associate quizzes with SOPs for training purposes
+- Track user training completion
+- Manage user roles and permissions
 
-**Use Lovable**
+## Features
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/c963a7b9-7ea7-4c36-9189-3b0aa86a7b68) and start prompting.
+### SOP Management
+- **Folder Organization**: Create and organize folders to categorize SOPs
+- **PDF Upload**: Upload, view, and delete PDF documents
+- **Search & Filter**: Find SOPs by category, name, or folder
+- **Version Control**: Track when SOPs were uploaded and by whom
 
-Changes made via Lovable will be committed automatically to this repo.
+### Training & Quizzes
+- **Quiz Creation**: Create quizzes related to SOPs
+- **Training Assignment**: Assign required training to users
+- **Progress Tracking**: Monitor quiz completion and scores
+- **Training History**: View historical training data
 
-**Use your preferred IDE**
+### User Management
+- **User Roles**: Different access levels for administrators and staff
+- **Organization-based Access**: SOPs organized by organization
+- **Personalized Dashboard**: View assigned and completed training
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+## Technical Stack
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+This application is built using:
 
-Follow these steps:
+- **React**: Frontend UI library
+- **TypeScript**: Type-safe JavaScript
+- **Firebase**: Backend services including:
+  - Authentication
+  - Firestore database
+  - Storage for PDF files
+- **Tailwind CSS**: Utility-first CSS framework
+- **shadcn/ui**: Component library for UI elements
+- **Vite**: Build tool for faster development
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+## Getting Started
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+### Prerequisites
+- Node.js (v16.x or higher)
+- npm or yarn
+- Firebase account
 
-# Step 3: Install the necessary dependencies.
-npm i
+### Installation
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+1. Clone the repository:
+```bash
+git clone https://github.com/imacooldeveloper/VivariumSOPs.git
+cd VivariumSOPs
+```
+
+2. Install dependencies:
+```bash
+npm install
+```
+
+3. Create a `.env` file at the root of the project with your Firebase configuration:
+```
+REACT_APP_FIREBASE_API_KEY=your_api_key
+REACT_APP_FIREBASE_AUTH_DOMAIN=your_auth_domain
+REACT_APP_FIREBASE_PROJECT_ID=your_project_id
+REACT_APP_FIREBASE_STORAGE_BUCKET=your_storage_bucket
+REACT_APP_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
+REACT_APP_FIREBASE_APP_ID=your_app_id
+```
+
+4. Start the development server:
+```bash
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+## Project Structure
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+```
+src/
+├── components/          # UI components
+│   ├── Layout/          # Layout components like Sidebar and MainLayout
+│   ├── SOPs/            # SOP-related components
+│   ├── Quizzes/         # Quiz-related components
+│   ├── Admin/           # Admin panel components
+│   └── ui/              # Base UI components from shadcn
+├── context/             # React context providers
+├── hooks/               # Custom React hooks
+├── lib/                 # Utility libraries
+├── pages/               # Top-level page components
+├── types/               # TypeScript type definitions
+├── viewmodels/          # Business logic for components
+└── main.tsx             # Application entry point
+```
 
-**Use GitHub Codespaces**
+## Firebase Collections
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+The application uses the following Firestore collections:
 
-## What technologies are used for this project?
+- **sopFolders**: Stores folder information for organizing SOPs
+- **pdfCategories**: Stores metadata for uploaded SOPs
+- **quizzes**: Stores quiz questions and answers
+- **quizAttempts**: Stores user quiz attempts and results
+- **userProfiles**: Stores extended user information
 
-This project is built with:
+## Current Status
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+The project currently implements:
+- User authentication
+- SOP folder creation and management
+- PDF upload and organization
+- Basic quiz structure
 
-## How can I deploy this project?
+## What's Missing / Roadmap
 
-Simply open [Lovable](https://lovable.dev/projects/c963a7b9-7ea7-4c36-9189-3b0aa86a7b68) and click on Share -> Publish.
+The following features are planned for future implementation:
 
-## Can I connect a custom domain to my Lovable project?
+1. **Enhanced Quiz Functionality**:
+   - Quiz creation interface
+   - Question bank management
+   - Quiz attempt tracking
 
-Yes it is!
+2. **Advanced Reporting**:
+   - Training compliance reports
+   - User activity logs
+   - Analytics dashboard
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+3. **Improved User Management**:
+   - User groups
+   - Batch assignment of training
+   - Approval workflows
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+4. **System Integration**:
+   - Calendar integration for training deadlines
+   - Email notifications
+   - API for external system integration
+
+5. **Mobile Optimization**:
+   - Better responsive design
+   - Mobile-specific features
+
+## Deployment
+
+The application can be deployed to Firebase Hosting:
+
+```bash
+npm run build
+firebase deploy
+```
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
