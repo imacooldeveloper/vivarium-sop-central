@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import {
@@ -11,9 +10,11 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { FolderPlus, Loader2 } from "lucide-react";
-import { useCreateFolder } from "@/hooks/useCreateFolder";
-import { toast } from "sonner";
+import { Loader2 } from "lucide-react";
+import { useAuth } from '@/context/AuthContext';
+import { db } from '@/lib/firebase';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { useToast } from "@/components/ui/use-toast";
 
 interface CreateFolderDialogProps {
   open: boolean;
@@ -21,61 +22,104 @@ interface CreateFolderDialogProps {
   onFolderCreated: () => void;
 }
 
-const CreateFolderDialog: React.FC<CreateFolderDialogProps> = ({
-  open,
-  onOpenChange,
-  onFolderCreated
-}) => {
+const CreateFolderDialog = ({ open, onOpenChange, onFolderCreated }: CreateFolderDialogProps) => {
   const [folderName, setFolderName] = useState('');
-  const { createFolder, isCreating } = useCreateFolder();
+  const [isCreating, setIsCreating] = useState(false);
+  const { userProfile } = useAuth();
+  const { toast } = useToast();
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleCreateFolder = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!folderName.trim()) {
-      toast.error("Please enter a folder name");
+      toast({
+        title: "Folder name required",
+        description: "Please enter a name for the folder",
+        variant: "destructive",
+      });
       return;
     }
 
+    if (!userProfile?.organizationId) {
+      toast({
+        title: "Organization required",
+        description: "You must be part of an organization to create folders",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsCreating(true);
+
     try {
-      await createFolder(folderName.trim());
-      toast.success("Folder created successfully");
+      // Add the new folder to Firestore
+      await addDoc(collection(db, 'sopFolders'), {
+        name: folderName.trim(),
+        organizationId: userProfile.organizationId,
+        createdBy: userProfile.uid,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      });
+
+      toast({
+        title: "Folder created",
+        description: `Folder "${folderName}" has been created successfully`,
+      });
+
+      // Reset form and close dialog
       setFolderName('');
+      
+      // Notify parent component
       onFolderCreated();
-      onOpenChange(false);
+      
+      // Add a small delay before closing to show success message
+      setTimeout(() => {
+        onOpenChange(false);
+      }, 1000);
     } catch (error) {
-      console.error("Failed to create folder:", error);
-      toast.error("Failed to create folder. Please try again.");
+      console.error("Error creating folder:", error);
+      toast({
+        title: "Error creating folder",
+        description: "There was a problem creating the folder. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsCreating(false);
     }
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleCreateFolder}>
           <DialogHeader>
-            <DialogTitle>Create SOP Folder</DialogTitle>
+            <DialogTitle>Create New Folder</DialogTitle>
             <DialogDescription>
-              Create a new folder to organize your Standard Operating Procedures.
+              Create a new folder to organize your SOPs
             </DialogDescription>
           </DialogHeader>
+          
           <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label htmlFor="folderName">Folder Name</Label>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="folderName" className="text-right">
+                Folder Name
+              </Label>
               <Input
                 id="folderName"
                 value={folderName}
                 onChange={(e) => setFolderName(e.target.value)}
+                className="col-span-3"
                 placeholder="Enter folder name"
-                autoFocus
+                disabled={isCreating}
                 required
               />
             </div>
           </div>
+          
           <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
+            <Button 
+              type="button" 
+              variant="outline" 
               onClick={() => onOpenChange(false)}
               disabled={isCreating}
             >
@@ -88,10 +132,7 @@ const CreateFolderDialog: React.FC<CreateFolderDialogProps> = ({
                   Creating...
                 </>
               ) : (
-                <>
-                  <FolderPlus className="mr-2 h-4 w-4" />
-                  Create Folder
-                </>
+                "Create Folder"
               )}
             </Button>
           </DialogFooter>
