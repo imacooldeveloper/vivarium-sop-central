@@ -62,7 +62,7 @@ export interface PDFCategory {
   uploadedByName?: string;
 }
 
-// Add Quiz type for components that reference it
+// Updated Quiz type for components that reference it
 export interface Quiz {
   id: string;
   title: string;
@@ -84,6 +84,10 @@ export interface Quiz {
   dueDate?: any;
   isRequired?: boolean;
   categoryId?: string;
+  // Added for compatibility with current implementation
+  question?: string;
+  options?: string[];
+  correctAnswerIndex?: number;
 }
 
 export interface QuizQuestion {
@@ -91,6 +95,7 @@ export interface QuizQuestion {
   text: string;
   options: QuizOption[];
   correctOptionId: string;
+  // Added for compatibility with current implementation
   question?: string;
   correctAnswerIndex?: number;
 }
