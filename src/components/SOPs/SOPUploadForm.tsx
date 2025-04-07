@@ -1,5 +1,4 @@
-
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -16,275 +15,167 @@ import { useAuth } from '@/context/AuthContext';
 import { toast } from 'sonner';
 import CreateFolderDialog from './CreateFolderDialog';
 import { Skeleton } from '../ui/skeleton';
+import { storage } from "@/lib/firebase";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { addDoc, serverTimestamp } from "firebase/firestore";
+import { useToast } from "@/components/ui/use-toast";
 
 interface SOPUploadFormProps {
+  folders: { id: string; name: string }[];
   onUploadComplete: () => void;
 }
 
-export const SOPUploadForm = ({ onUploadComplete }: SOPUploadFormProps) => {
-  const [pdfFile, setPdfFile] = useState<File | null>(null);
-  const [pdfName, setPdfName] = useState('');
-  const [categoryName, setCategoryName] = useState('');
-  const [subcategoryTitle, setSubcategoryTitle] = useState('');
-  const [folderId, setFolderId] = useState<string>('');
-  const [folders, setFolders] = useState<Folder[]>([]);
-  const [isFetchingFolders, setIsFetchingFolders] = useState(true);
-  const [createFolderDialogOpen, setCreateFolderDialogOpen] = useState(false);
-  const { uploadPDF, isUploading, uploadProgress } = usePDFUploadViewModel();
-  const { userProfile } = useAuth();
-
-  // Fetch folders when component mounts
-  useEffect(() => {
-    const fetchFolders = async () => {
-      if (!userProfile?.organizationId) {
-        setIsFetchingFolders(false);
-        return;
-      }
-      
-      setIsFetchingFolders(true);
-      try {
-        // First try the 'sopFolders' collection
-        const q = query(
-          collection(db, 'sopFolders'),
-          where('organizationId', '==', userProfile.organizationId)
-        );
-        
-        const querySnapshot = await getDocs(q);
-        let folderList: Folder[] = querySnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        })) as Folder[];
-        
-        // If no results, try alternative collection name
-        if (folderList.length === 0) {
-          const altQuery = query(
-            collection(db, 'SOPFolders'),
-            where('organizationId', '==', userProfile.organizationId)
-          );
-          
-          const altSnapshot = await getDocs(altQuery);
-          if (altSnapshot.docs.length > 0) {
-            folderList = altSnapshot.docs.map(doc => ({
-              id: doc.id,
-              ...doc.data()
-            })) as Folder[];
-          }
-        }
-        
-        console.log("Retrieved folders for upload form:", folderList);
-        setFolders(folderList);
-      } catch (error) {
-        console.error("Error fetching folders:", error);
-        toast.error("Failed to load folders");
-      } finally {
-        setIsFetchingFolders(false);
-      }
-    };
-
-    fetchFolders();
-  }, [userProfile?.organizationId]);
+export function SOPUploadForm({ folders, onUploadComplete }: SOPUploadFormProps) {
+  const [title, setTitle] = useState("");
+  const [selectedFolder, setSelectedFolder] = useState("");
+  const [file, setFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { user } = useAuth();
+  const { toast } = useToast();
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setPdfFile(file);
-      // If no name is entered yet, use the filename (without extension)
-      if (!pdfName) {
-        const filename = file.name.replace(/\.[^/.]+$/, "");
-        setPdfName(filename);
+    if (e.target.files && e.target.files[0]) {
+      const selectedFile = e.target.files[0];
+      if (selectedFile.type === "application/pdf") {
+        setFile(selectedFile);
+      } else {
+        toast({
+          title: "Invalid file type",
+          description: "Please select a PDF file",
+          variant: "destructive",
+        });
+        if (fileInputRef.current) {
+          fileInputRef.current.value = "";
+        }
       }
     }
   };
 
-  const handleFolderCreated = () => {
-    // Refetch folders after creating a new one
-    const fetchFolders = async () => {
-      if (!userProfile?.organizationId) return;
-      
-      try {
-        const q = query(
-          collection(db, 'sopFolders'),
-          where('organizationId', '==', userProfile.organizationId)
-        );
-        
-        const querySnapshot = await getDocs(q);
-        const folderList: Folder[] = querySnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        })) as Folder[];
-        
-        setFolders(folderList);
-      } catch (error) {
-        console.error("Error fetching folders:", error);
-      }
-    };
+  const handleUpload = async () => {
+    if (!file || !title || !selectedFolder || !user) {
+      toast({
+        title: "Missing information",
+        description: "Please fill in all fields and select a PDF file",
+        variant: "destructive",
+      });
+      return;
+    }
 
-    fetchFolders();
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!pdfFile) return;
+    setUploading(true);
 
     try {
-      await uploadPDF(
-        pdfFile,
-        pdfName,
-        '', // No quiz category ID for now
-        categoryName,
-        subcategoryTitle,
-        folderId // Pass the selected folder ID
-      );
+      // Create a unique file path in Firebase Storage
+      const storageRef = ref(storage, `sops/${selectedFolder}/${Date.now()}_${file.name}`);
       
-      // Reset form after successful upload
-      setPdfFile(null);
-      setPdfName('');
-      setCategoryName('');
-      setSubcategoryTitle('');
-      setFolderId('');
+      // Upload the file
+      const uploadResult = await uploadBytes(storageRef, file);
+      
+      // Get the download URL
+      const downloadURL = await getDownloadURL(uploadResult.ref);
+      
+      // Add document to Firestore
+      await addDoc(collection(db, "pdfCategories"), {
+        title,
+        folderId: selectedFolder,
+        fileUrl: downloadURL,
+        fileName: file.name,
+        uploadedBy: user.uid,
+        uploadedByName: user.displayName || user.email,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      });
+
+      toast({
+        title: "SOP uploaded successfully",
+        description: "Your SOP has been uploaded and is now available",
+      });
+
+      // Reset form
+      setTitle("");
+      setSelectedFolder("");
+      setFile(null);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
       
       // Notify parent component
       onUploadComplete();
     } catch (error) {
-      console.error("Upload failed:", error);
+      console.error("Error uploading SOP:", error);
+      toast({
+        title: "Upload failed",
+        description: "There was an error uploading your SOP. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setUploading(false);
     }
   };
 
   return (
-    <>
-      <Card>
-        <form onSubmit={handleSubmit}>
-          <CardHeader>
-            <CardTitle>Upload SOP Document</CardTitle>
-            <CardDescription>
-              Upload a PDF file for your standard operating procedure.
-            </CardDescription>
-          </CardHeader>
-          
-          <CardContent className="space-y-4">
-            <div className="grid w-full gap-1.5">
-              <Label htmlFor="pdfFile">PDF File</Label>
-              <Input 
-                id="pdfFile" 
-                type="file" 
-                accept="application/pdf" 
-                onChange={handleFileChange}
-                disabled={isUploading}
-              />
-              {pdfFile && (
-                <p className="text-sm text-muted-foreground">
-                  Selected: {pdfFile.name} ({Math.round(pdfFile.size / 1024)} KB)
-                </p>
-              )}
-            </div>
-
-            <div className="grid w-full gap-1.5">
-              <Label htmlFor="pdfName">Document Title</Label>
-              <Input 
-                id="pdfName" 
-                value={pdfName} 
-                onChange={(e) => setPdfName(e.target.value)}
-                placeholder="e.g., Mouse Handling Protocol"
-                disabled={isUploading}
-              />
-            </div>
-
-            <div className="grid w-full gap-1.5">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="folder">Folder</Label>
-                <Button 
-                  type="button" 
-                  variant="ghost" 
-                  size="sm" 
-                  className="h-8 px-2 text-xs"
-                  onClick={() => setCreateFolderDialogOpen(true)}
-                >
-                  <FolderPlus className="h-3.5 w-3.5 mr-1" />
-                  New Folder
-                </Button>
-              </div>
-              {isFetchingFolders ? (
-                <Skeleton className="h-10 w-full" />
-              ) : (
-                <Select
-                  value={folderId} 
-                  onValueChange={setFolderId}
-                  disabled={isUploading}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a folder (optional)" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="">No folder (Root)</SelectItem>
-                    {folders.map((folder) => (
-                      <SelectItem key={folder.id} value={folder.id}>
-                        {folder.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-            </div>
-
-            <div className="grid w-full gap-1.5">
-              <Label htmlFor="categoryName">Category</Label>
-              <Input 
-                id="categoryName" 
-                value={categoryName} 
-                onChange={(e) => setCategoryName(e.target.value)}
-                placeholder="e.g., Animal Handling"
-                disabled={isUploading}
-              />
-            </div>
-
-            <div className="grid w-full gap-1.5">
-              <Label htmlFor="subcategoryTitle">Description</Label>
-              <Textarea 
-                id="subcategoryTitle" 
-                value={subcategoryTitle} 
-                onChange={(e) => setSubcategoryTitle(e.target.value)}
-                placeholder="Brief description of this SOP document"
-                disabled={isUploading}
-              />
-            </div>
-
-            {isUploading && (
-              <div className="space-y-2">
-                <Progress value={uploadProgress} className="h-2" />
-                <p className="text-sm text-center text-muted-foreground">
-                  Uploading... {uploadProgress}%
-                </p>
-              </div>
-            )}
-          </CardContent>
-          
-          <CardFooter>
-            <Button 
-              type="submit" 
-              disabled={!pdfFile || !pdfName || !categoryName || isUploading}
-              className="w-full"
-            >
-              {isUploading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Uploading...
-                </>
-              ) : (
-                <>
-                  <FileUp className="mr-2 h-4 w-4" />
-                  Upload SOP
-                </>
-              )}
-            </Button>
-          </CardFooter>
-        </form>
-      </Card>
-      
-      <CreateFolderDialog 
-        open={createFolderDialogOpen} 
-        onOpenChange={setCreateFolderDialogOpen} 
-        onFolderCreated={handleFolderCreated}
-      />
-    </>
+    <Card className="w-full max-w-md mx-auto">
+      <CardHeader>
+        <CardTitle>Upload New SOP</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="space-y-2">
+          <Label htmlFor="title">SOP Title</Label>
+          <Input
+            id="title"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="Enter SOP title"
+          />
+        </div>
+        
+        <div className="space-y-2">
+          <Label htmlFor="folder">Select Folder</Label>
+          <Select value={selectedFolder} onValueChange={setSelectedFolder}>
+            <SelectTrigger id="folder">
+              <SelectValue placeholder="Select a folder" />
+            </SelectTrigger>
+            <SelectContent>
+              {folders.map((folder) => (
+                <SelectItem key={folder.id} value={folder.id}>
+                  {folder.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        
+        <div className="space-y-2">
+          <Label htmlFor="file">PDF File</Label>
+          <Input
+            id="file"
+            ref={fileInputRef}
+            type="file"
+            accept="application/pdf"
+            onChange={handleFileChange}
+          />
+          {file && (
+            <p className="text-sm text-muted-foreground">
+              Selected file: {file.name}
+            </p>
+          )}
+        </div>
+        
+        <Button 
+          onClick={handleUpload} 
+          disabled={uploading || !file || !title || !selectedFolder}
+          className="w-full"
+        >
+          {uploading ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Uploading...
+            </>
+          ) : (
+            "Upload SOP"
+          )}
+        </Button>
+      </CardContent>
+    </Card>
   );
-};
+}

@@ -1,10 +1,9 @@
-
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PDFCategory } from '@/types';
-import { AlertCircle, File, FileText, Trash2, RefreshCw, ExternalLink } from 'lucide-react';
+import { AlertCircle, File, FileText, Trash2, RefreshCw, ExternalLink, Loader2 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -15,9 +14,10 @@ interface SOPListProps {
   error: Error | null;
   onDelete: (id: string) => Promise<void>;
   onRefresh: () => void;
+  emptyMessage: string;
 }
 
-export const SOPList = ({ categories, isLoading, error, onDelete, onRefresh }: SOPListProps) => {
+export const SOPList = ({ categories, isLoading, error, onDelete, onRefresh, emptyMessage }: SOPListProps) => {
   // Group SOPs by category
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
@@ -26,33 +26,11 @@ export const SOPList = ({ categories, isLoading, error, onDelete, onRefresh }: S
   
   if (isLoading) {
     return (
-      <div className="space-y-4">
-        <div className="flex justify-between items-center">
-          <h2 className="text-2xl font-bold">Loading SOPs...</h2>
-          <Button variant="outline" size="icon" onClick={onRefresh} disabled>
-            <RefreshCw className="h-4 w-4 animate-spin" />
-          </Button>
-        </div>
-        
-        {Array.from({ length: 3 }).map((_, i) => (
-          <Card key={i} className="overflow-hidden">
-            <CardHeader className="pb-2">
-              <Skeleton className="h-6 w-2/3" />
-              <Skeleton className="h-4 w-1/2" />
-            </CardHeader>
-            <CardContent>
-              <Skeleton className="h-4 w-full mb-2" />
-              <Skeleton className="h-4 w-5/6" />
-            </CardContent>
-            <CardFooter>
-              <div className="w-full flex justify-between">
-                <Skeleton className="h-9 w-20" />
-                <Skeleton className="h-9 w-20" />
-              </div>
-            </CardFooter>
-          </Card>
-        ))}
-      </div>
+      <Card>
+        <CardContent className="flex justify-center items-center min-h-[200px]">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </CardContent>
+      </Card>
     );
   }
 
@@ -80,17 +58,9 @@ export const SOPList = ({ categories, isLoading, error, onDelete, onRefresh }: S
   if (categories.length === 0) {
     return (
       <Card>
-        <CardHeader>
-          <CardTitle>No SOPs Found</CardTitle>
-          <CardDescription>
-            There are no SOPs uploaded to this organization yet.
-          </CardDescription>
-        </CardHeader>
-        <CardFooter>
-          <Button onClick={onRefresh} variant="outline" className="flex gap-2">
-            <RefreshCw className="h-4 w-4" /> Refresh
-          </Button>
-        </CardFooter>
+        <CardContent className="flex justify-center items-center min-h-[200px] text-muted-foreground">
+          {emptyMessage}
+        </CardContent>
       </Card>
     );
   }
