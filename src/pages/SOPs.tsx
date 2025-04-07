@@ -4,24 +4,60 @@ import MainLayout from "@/components/Layout/MainLayout";
 import { usePDFCategoryViewModel } from "@/viewmodels/usePDFCategoryViewModel";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-import { Plus, RefreshCw } from "lucide-react";
-import { SOPList } from "@/components/SOPs/SOPList";
+import { Folder, FolderPlus, Plus, RefreshCw } from "lucide-react";
 import { SOPUploadForm } from "@/components/SOPs/SOPUploadForm";
-import { Toaster } from "@/components/ui/toaster";
+import { Toaster } from "@/components/ui/sonner";
 import { useAuth } from "@/context/AuthContext";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
 import { Card } from "@/components/ui/card";
+import { PDFCategory, Folder as FolderType } from '@/types';
+import SOPFolder from "@/components/SOPs/SOPFolder";
+import CreateFolderDialog from "@/components/SOPs/CreateFolderDialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Separator } from "@/components/ui/separator";
+import { collection, query, where, getDocs } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import EmptyState from "@/components/Quizzes/EmptyState";
 
 const SOPs = () => {
   const { userProfile, currentUser, loading: authLoading } = useAuth();
-  const { categories, isLoading, error, deletePDF, refreshCategories, debugInfo } = usePDFCategoryViewModel();
+  const { categories, isLoading, error, deletePDF, refreshCategories } = usePDFCategoryViewModel();
   const [uploadSheetOpen, setUploadSheetOpen] = useState(false);
+  const [createFolderDialogOpen, setCreateFolderDialogOpen] = useState(false);
+  const [folders, setFolders] = useState<FolderType[]>([]);
+  const [isLoadingFolders, setIsLoadingFolders] = useState(true);
+  const [selectedPdf, setSelectedPdf] = useState<PDFCategory | null>(null);
+  const [viewMode, setViewMode] = useState<"folders" | "all">("folders");
 
+  // Fetch folders when component mounts or refreshes
   useEffect(() => {
-    console.log("SOPs component - Current user profile:", userProfile);
-    console.log("SOPs component - Organization ID:", userProfile?.organizationId);
-  }, [userProfile]);
+    const fetchFolders = async () => {
+      if (!userProfile?.organizationId) return;
+      
+      setIsLoadingFolders(true);
+      try {
+        const q = query(
+          collection(db, 'sopFolders'),
+          where('organizationId', '==', userProfile.organizationId)
+        );
+        
+        const querySnapshot = await getDocs(q);
+        const folderList: FolderType[] = querySnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        })) as FolderType[];
+        
+        setFolders(folderList);
+      } catch (error) {
+        console.error("Error fetching folders:", error);
+      } finally {
+        setIsLoadingFolders(false);
+      }
+    };
+
+    fetchFolders();
+  }, [userProfile?.organizationId, categories]); // Refresh when categories change
 
   const handleDeletePDF = async (id: string) => {
     if (window.confirm("Are you sure you want to delete this SOP?")) {
@@ -37,6 +73,29 @@ const SOPs = () => {
     setUploadSheetOpen(false);
     refreshCategories();
   };
+
+  const handleFolderCreated = () => {
+    refreshCategories();
+  };
+
+  const handleViewPDF = (pdf: PDFCategory) => {
+    window.open(pdf.pdfURL, '_blank');
+  };
+
+  // Group PDFs by folder
+  const groupedPDFs: Record<string, PDFCategory[]> = {};
+  const unassignedPDFs: PDFCategory[] = [];
+
+  categories.forEach(pdf => {
+    if (pdf.folderId) {
+      if (!groupedPDFs[pdf.folderId]) {
+        groupedPDFs[pdf.folderId] = [];
+      }
+      groupedPDFs[pdf.folderId].push(pdf);
+    } else {
+      unassignedPDFs.push(pdf);
+    }
+  });
 
   // Show loading state while auth is being checked
   if (authLoading) {
@@ -67,13 +126,6 @@ const SOPs = () => {
               Your user account is not associated with any organization.
               {currentUser && <span> Current UID: {currentUser.uid}</span>}
             </p>
-            <pre className="mt-4 bg-gray-100 p-4 rounded text-sm text-left overflow-auto">
-              {JSON.stringify({
-                uid: currentUser?.uid,
-                email: currentUser?.email,
-                profile: userProfile
-              }, null, 2)}
-            </pre>
           </div>
         </div>
       </MainLayout>
@@ -84,73 +136,171 @@ const SOPs = () => {
     <MainLayout>
       <div className="container mx-auto p-4">
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold">Standard Operating Procedures</h1>
+          <div>
+            <h1 className="text-3xl font-bold">Standard Operating Procedures</h1>
+            <p className="text-muted-foreground mt-1">
+              Manage and access your organization's standard operating procedures
+            </p>
+          </div>
           
-          <Sheet open={uploadSheetOpen} onOpenChange={setUploadSheetOpen}>
-            <SheetTrigger asChild>
-              <Button>
-                <Plus className="mr-2 h-4 w-4" /> Upload SOP
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="right" className="sm:max-w-md">
-              <SheetHeader className="mb-4">
-                <SheetTitle>Upload New SOP</SheetTitle>
-                <SheetDescription>
-                  Add a new standard operating procedure document to your organization.
-                </SheetDescription>
-              </SheetHeader>
-              <SOPUploadForm onUploadComplete={handleUploadComplete} />
-            </SheetContent>
-          </Sheet>
+          <div className="flex gap-2">
+            <Button
+              variant="outline" 
+              onClick={() => setCreateFolderDialogOpen(true)}
+            >
+              <FolderPlus className="mr-2 h-4 w-4" /> Create Folder
+            </Button>
+            
+            <Sheet open={uploadSheetOpen} onOpenChange={setUploadSheetOpen}>
+              <SheetTrigger asChild>
+                <Button>
+                  <Plus className="mr-2 h-4 w-4" /> Upload SOP
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="right" className="sm:max-w-md">
+                <SheetHeader className="mb-4">
+                  <SheetTitle>Upload New SOP</SheetTitle>
+                  <SheetDescription>
+                    Add a new standard operating procedure document to your organization.
+                  </SheetDescription>
+                </SheetHeader>
+                <SOPUploadForm onUploadComplete={handleUploadComplete} />
+              </SheetContent>
+            </Sheet>
+          </div>
         </div>
 
-        {/* Debug information */}
-        <Card className="mb-4 p-4 bg-amber-50 border-amber-200 rounded-md">
-          <h3 className="font-semibold mb-2">Debug Information</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <p><strong>Organization ID:</strong> {userProfile?.organizationId || "None"}</p>
-              <p><strong>User:</strong> {userProfile?.firstName} {userProfile?.lastName} ({userProfile?.userEmail})</p>
-              <p><strong>Categories found:</strong> {categories ? categories.length : 0}</p>
-              <p><strong>Auth User ID:</strong> {currentUser?.uid || "Not logged in"}</p>
-            </div>
-            <div>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={refreshCategories} 
-                className="flex gap-2 mb-2"
-              >
-                <RefreshCw className="h-4 w-4" /> Refresh Data
-              </Button>
-              <p><strong>Collection Statuses:</strong></p>
-              {debugInfo && debugInfo.collections && (
-                <ul className="text-xs">
-                  <li>sopCategories: {debugInfo.collections.sopCategories?.count || 0} items</li>
-                  <li>pdfCategories: {debugInfo.collections.pdfCategories?.count || 0} items</li>
-                  {debugInfo.collections.pdfCategories?.error && (
-                    <li className="text-red-500">Error: {debugInfo.collections.pdfCategories.error}</li>
-                  )}
-                </ul>
-              )}
-            </div>
-          </div>
-          <details className="mt-2">
-            <summary className="cursor-pointer text-sm text-blue-600">Show Raw Debug Data</summary>
-            <pre className="mt-2 p-2 bg-gray-100 rounded text-xs overflow-auto max-h-40">
-              {JSON.stringify(debugInfo, null, 2)}
-            </pre>
-          </details>
-        </Card>
+        <Tabs defaultValue="folders" className="w-full" onValueChange={(value) => setViewMode(value as "folders" | "all")}>
+          <TabsList>
+            <TabsTrigger value="folders">
+              <Folder className="h-4 w-4 mr-2" /> 
+              Folders View
+            </TabsTrigger>
+            <TabsTrigger value="all">
+              All Documents
+            </TabsTrigger>
+          </TabsList>
 
-        <SOPList 
-          categories={categories}
-          isLoading={isLoading}
-          error={error}
-          onDelete={handleDeletePDF}
-          onRefresh={refreshCategories}
-        />
+          <div className="mt-4">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-semibold">
+                {viewMode === "folders" ? "SOP Folders" : "All SOP Documents"}
+              </h2>
+              <Button variant="outline" size="sm" onClick={refreshCategories} className="flex gap-2">
+                <RefreshCw className="h-4 w-4" /> Refresh
+              </Button>
+            </div>
+            
+            <Separator className="mb-4" />
+
+            {isLoading || isLoadingFolders ? (
+              <div className="space-y-4">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <Card key={i} className="p-4">
+                    <div className="h-6 bg-muted/50 rounded animate-pulse mb-2 w-1/3"></div>
+                    <div className="h-4 bg-muted/50 rounded animate-pulse w-1/2"></div>
+                  </Card>
+                ))}
+              </div>
+            ) : error ? (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>Error</AlertTitle>
+                <AlertDescription>
+                  Failed to load SOPs. Please try refreshing.
+                </AlertDescription>
+              </Alert>
+            ) : categories.length === 0 ? (
+              <EmptyState
+                title="No SOPs Available"
+                description="Upload your first SOP document to get started."
+              />
+            ) : (
+              <TabsContent value="folders" className="mt-0">
+                {/* Show folders with their SOPs */}
+                {folders.length > 0 ? (
+                  <>
+                    {folders.map(folder => (
+                      <SOPFolder
+                        key={folder.id}
+                        name={folder.name}
+                        sopItems={groupedPDFs[folder.id] || []}
+                        onViewPDF={handleViewPDF}
+                        onDeletePDF={handleDeletePDF}
+                      />
+                    ))}
+                    
+                    {/* Unassigned SOPs */}
+                    {unassignedPDFs.length > 0 && (
+                      <SOPFolder
+                        name="Unassigned SOPs"
+                        sopItems={unassignedPDFs}
+                        onViewPDF={handleViewPDF}
+                        onDeletePDF={handleDeletePDF}
+                      />
+                    )}
+                  </>
+                ) : (
+                  <EmptyState
+                    icon="book"
+                    title="No SOP Folders Created"
+                    description="Create a folder to start organizing your SOPs. You can also view all SOPs in the All Documents tab."
+                  />
+                )}
+              </TabsContent>
+            )}
+            
+            <TabsContent value="all" className="mt-0">
+              {/* Show all SOPs without folders */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {categories.map(sop => (
+                  <Card key={sop.id} className="overflow-hidden flex flex-col hover:shadow-md transition-shadow">
+                    <div className="p-4 flex-grow">
+                      <div className="flex justify-between items-start">
+                        <h3 className="font-medium line-clamp-2">{sop.pdfName}</h3>
+                      </div>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        {sop.nameOfCategory}
+                      </p>
+                      {sop.uploadedAt && (
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Uploaded {new Date(sop.uploadedAt).toLocaleDateString()}
+                        </p>
+                      )}
+                    </div>
+                    
+                    <div className="p-4 bg-muted/30 flex justify-end border-t">
+                      <div className="flex gap-2">
+                        <Button size="sm" variant="outline" onClick={() => handleViewPDF(sop)}>
+                          View
+                        </Button>
+                        <Button size="sm" variant="destructive" onClick={() => handleDeletePDF(sop.id)}>
+                          Delete
+                        </Button>
+                      </div>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+              
+              {categories.length === 0 && (
+                <EmptyState
+                  icon="book"
+                  title="No SOPs Available"
+                  description="Upload your first SOP document to get started."
+                />
+              )}
+            </TabsContent>
+          </div>
+        </Tabs>
       </div>
+      
+      <CreateFolderDialog 
+        open={createFolderDialogOpen} 
+        onOpenChange={setCreateFolderDialogOpen}
+        onFolderCreated={handleFolderCreated} 
+      />
+      
       <Toaster />
     </MainLayout>
   );

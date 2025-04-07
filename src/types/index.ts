@@ -1,74 +1,39 @@
-
-export interface User {
+export interface UserProfile {
   id: string;
-  userUID: string; // Firebase UID
-  organizationId: string;
   firstName: string;
   lastName: string;
-  username: string;
   userEmail: string;
-  facilityName: string;
-  accountType: "Admin" | "Husbandry" | "Supervisor" | "Veterinarian";
-  quizScores?: {
-    quizId: string;
-    score: number;
-    passed: boolean;
-    completedAt: Date;
-  }[];
+  organizationId: string;
+  role: string;
 }
 
 export interface SOPCategory {
   id: string;
   nameOfCategory: string;
   organizationId: string;
-  SOPForStaffTittle?: string;
-  sopPages?: string;
+  createdBy: string;
+  createdAt: any; // Timestamp
+}
+
+// Adding folder type
+export interface Folder {
+  id: string;
+  name: string;
+  organizationId: string;
+  createdBy: string;
+  createdAt: any; // Timestamp
 }
 
 export interface PDFCategory {
   id: string;
   nameOfCategory: string;
-  organizationId: string;
+  SOPForStaffTittle: string;
+  subcategory?: string;
   pdfName: string;
   pdfURL: string;
-  categoryId?: string;
-  subcategory?: string;
-  uploadedAt?: Date;
-}
-
-export interface Quiz {
-  id: string;
-  title: string;
-  description: string;
-  categoryId: string;
-  subcategory: string;
+  quizCategoryID: string;
   organizationId: string;
-  passingScore: number;
-  timeLimit: number;
-  isRequired: boolean;
-  createdAt: Date;
-  createdBy: string;
-  questions: QuizQuestion[];
-}
-
-export interface QuizQuestion {
-  id: string;
-  question: string;
-  options: string[];
-  correctAnswerIndex: number;
-}
-
-export interface QuizAttempt {
-  id: string;
-  userId: string;
-  quizId: string;
-  score: number;
-  passed: boolean;
-  startedAt: Date;
-  completedAt: Date;
-  answers: {
-    questionId: string;
-    selectedAnswerIndex: number;
-    isCorrect: boolean;
-  }[];
+  uploadedBy: string;
+  uploadedAt: any;
+  folderId?: string | null;
 }

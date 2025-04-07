@@ -17,7 +17,8 @@ export const usePDFUploadViewModel = () => {
     pdfName: string,
     quizCategoryID: string,
     categoryName: string,
-    subcategoryTitle: string
+    subcategoryTitle: string,
+    folderId?: string
   ) => {
     if (!userProfile?.organizationId) {
       console.error('No organization ID available', userProfile);
@@ -70,6 +71,7 @@ export const usePDFUploadViewModel = () => {
         organizationId: userProfile.organizationId,
         uploadedBy: userProfile.id,
         uploadedAt: serverTimestamp(), // Use server timestamp for consistency
+        folderId: folderId || null, // Store the folder ID if provided
       });
       
       console.log("Document added to Firestore with ID:", docRef.id);
