@@ -213,7 +213,12 @@ const SOPs = () => {
               <DialogContent>
                 <SOPUploadForm 
                   folders={folders} 
-                  onUploadComplete={handleUploadComplete} 
+                  onUploadComplete={() => {
+                    refreshCategories();
+                    setTimeout(() => {
+                      setIsUploadDialogOpen(false);
+                    }, 1000);
+                  }} 
                 />
               </DialogContent>
             </Dialog>

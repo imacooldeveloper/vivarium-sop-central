@@ -1,23 +1,14 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { usePDFUploadViewModel } from '@/viewmodels/usePDFUploadViewModel';
-import { FileUp, Loader2, FolderPlus } from 'lucide-react';
-import { Progress } from '@/components/ui/progress';
+import { FileUp, Loader2 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Folder } from '@/types';
-import { collection, query, where, getDocs } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
-import { useAuth } from '@/context/AuthContext';
-import { toast } from 'sonner';
-import CreateFolderDialog from './CreateFolderDialog';
-import { Skeleton } from '../ui/skeleton';
-import { storage } from "@/lib/firebase";
+import { storage, db } from '@/lib/firebase';
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import { addDoc, serverTimestamp } from "firebase/firestore";
+import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+import { useAuth } from '@/context/AuthContext';
 import { useToast } from "@/components/ui/use-toast";
 
 interface SOPUploadFormProps {
@@ -52,7 +43,10 @@ export function SOPUploadForm({ folders, onUploadComplete }: SOPUploadFormProps)
     }
   };
 
-  const handleUpload = async () => {
+  const handleUpload = async (e: React.FormEvent) => {
+    // Prevent form submission which might cause page reload or dialog close
+    e.preventDefault();
+    
     if (!file || !title || !selectedFolder || !user) {
       toast({
         title: "Missing information",
@@ -114,68 +108,75 @@ export function SOPUploadForm({ folders, onUploadComplete }: SOPUploadFormProps)
   };
 
   return (
-    <Card className="w-full max-w-md mx-auto">
-      <CardHeader>
-        <CardTitle>Upload New SOP</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="space-y-2">
-          <Label htmlFor="title">SOP Title</Label>
-          <Input
-            id="title"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder="Enter SOP title"
-          />
-        </div>
-        
-        <div className="space-y-2">
-          <Label htmlFor="folder">Select Folder</Label>
-          <Select value={selectedFolder} onValueChange={setSelectedFolder}>
-            <SelectTrigger id="folder">
-              <SelectValue placeholder="Select a folder" />
-            </SelectTrigger>
-            <SelectContent>
-              {folders.map((folder) => (
-                <SelectItem key={folder.id} value={folder.id}>
-                  {folder.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        
-        <div className="space-y-2">
-          <Label htmlFor="file">PDF File</Label>
-          <Input
-            id="file"
-            ref={fileInputRef}
-            type="file"
-            accept="application/pdf"
-            onChange={handleFileChange}
-          />
-          {file && (
-            <p className="text-sm text-muted-foreground">
-              Selected file: {file.name}
-            </p>
-          )}
-        </div>
-        
-        <Button 
-          onClick={handleUpload} 
-          disabled={uploading || !file || !title || !selectedFolder}
-          className="w-full"
-        >
-          {uploading ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Uploading...
-            </>
-          ) : (
-            "Upload SOP"
-          )}
-        </Button>
-      </CardContent>
-    </Card>
+    <form onSubmit={handleUpload}>
+      <Card className="w-full max-w-md mx-auto">
+        <CardHeader>
+          <CardTitle>Upload New SOP</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="title">SOP Title</Label>
+            <Input
+              id="title"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Enter SOP title"
+              required
+            />
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="folder">Select Folder</Label>
+            <Select value={selectedFolder} onValueChange={setSelectedFolder} required>
+              <SelectTrigger id="folder">
+                <SelectValue placeholder="Select a folder" />
+              </SelectTrigger>
+              <SelectContent>
+                {folders.map((folder) => (
+                  <SelectItem key={folder.id} value={folder.id}>
+                    {folder.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="file">PDF File</Label>
+            <Input
+              id="file"
+              ref={fileInputRef}
+              type="file"
+              accept="application/pdf"
+              onChange={handleFileChange}
+              required
+            />
+            {file && (
+              <p className="text-sm text-muted-foreground">
+                Selected file: {file.name}
+              </p>
+            )}
+          </div>
+          
+          <Button 
+            type="submit"
+            disabled={uploading || !file || !title || !selectedFolder}
+            className="w-full"
+          >
+            {uploading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Uploading...
+              </>
+            ) : (
+              <>
+                <FileUp className="mr-2 h-4 w-4" />
+                Upload SOP
+              </>
+            )}
+          </Button>
+        </CardContent>
+      </Card>
+    </form>
   );
 }
