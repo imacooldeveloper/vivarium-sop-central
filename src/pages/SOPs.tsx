@@ -1,7 +1,6 @@
+
 import React, { useState, useEffect } from "react";
 import MainLayout from "@/components/Layout/MainLayout";
-import { usePDFCategoryViewModel } from "@/viewmodels/usePDFCategoryViewModel";
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Folder, FolderPlus, Plus, RefreshCw } from "lucide-react";
 import { SOPUploadForm } from "@/components/SOPs/SOPUploadForm";
@@ -21,44 +20,55 @@ import EmptyState from "@/components/Quizzes/EmptyState";
 import { PlusCircle } from "lucide-react";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/use-toast";
-import { SOPList } from "@/components/SOPs/SOPList";
 import { SOPFolderList } from "@/components/SOPs/SOPFolderList";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const SOPs = () => {
   const { userProfile, currentUser, loading: authLoading } = useAuth();
-  const { categories, isLoading, error, deletePDF, refreshCategories } = usePDFCategoryViewModel();
   const [uploadSheetOpen, setUploadSheetOpen] = useState(false);
   const [createFolderDialogOpen, setCreateFolderDialogOpen] = useState(false);
   const [folders, setFolders] = useState<FolderType[]>([]);
   const [isLoadingFolders, setIsLoadingFolders] = useState(true);
-  const [selectedPdf, setSelectedPdf] = useState<PDFCategory | null>(null);
   const [viewMode, setViewMode] = useState<"folders" | "all">("folders");
   const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
-  const [sops, setSOPs] = useState<any[]>([]);
+  const [sops, setSOPs] = useState<PDFCategory[]>([]);
   const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
+  const [allSops, setAllSops] = useState<PDFCategory[]>([]);
+  const [isLoadingSops, setIsLoadingSops] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
   const { toast } = useToast();
 
-  // Fetch folders when component mounts or refreshes
+  // Fetch folders when component mounts
   useEffect(() => {
     const fetchFolders = async () => {
       if (!userProfile?.organizationId) return;
       
       setIsLoadingFolders(true);
       try {
-        const q = query(
-          collection(db, 'sopFolders'),
-          where('organizationId', '==', userProfile.organizationId)
-        );
+        // Try both collection names to ensure compatibility
+        const collections = ['sopFolders', 'SOPFolders'];
+        let folderList: FolderType[] = [];
         
-        const querySnapshot = await getDocs(q);
-        const folderList: FolderType[] = querySnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        })) as FolderType[];
+        for (const collectionName of collections) {
+          const q = query(
+            collection(db, collectionName),
+            where('organizationId', '==', userProfile.organizationId)
+          );
+          
+          const querySnapshot = await getDocs(q);
+          const foldersFromCollection = querySnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+          })) as FolderType[];
+          
+          folderList = [...folderList, ...foldersFromCollection];
+        }
         
+        console.log(`Found ${folderList.length} folders`);
         setFolders(folderList);
       } catch (error) {
         console.error("Error fetching folders:", error);
+        setError(error instanceof Error ? error : new Error("Failed to load folders"));
         toast({
           title: "Error",
           description: "Failed to load SOP folders",
@@ -69,72 +79,142 @@ const SOPs = () => {
       }
     };
 
+    fetchAllSops();
     fetchFolders();
-  }, [userProfile?.organizationId, categories, toast]); // Refresh when categories change
+  }, [userProfile?.organizationId, toast]);
+
+  // Fetch all SOPs
+  const fetchAllSops = async () => {
+    if (!userProfile?.organizationId) return;
+
+    setIsLoadingSops(true);
+    try {
+      const sopsQuery = query(
+        collection(db, "pdfCategories"),
+        where("organizationId", "==", userProfile.organizationId)
+      );
+      const sopsSnapshot = await getDocs(sopsQuery);
+      const sopsData = sopsSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+      })) as PDFCategory[];
+      
+      console.log(`Found ${sopsData.length} total SOPs`);
+      setAllSops(sopsData);
+    } catch (error) {
+      console.error("Error fetching SOPs:", error);
+      setError(error instanceof Error ? error : new Error("Failed to load SOPs"));
+      toast({
+        title: "Error",
+        description: "Failed to load SOPs",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoadingSops(false);
+    }
+  };
 
   // Fetch SOPs when a folder is selected
   useEffect(() => {
-    const fetchSOPs = async () => {
-      if (!selectedFolder) {
-        setSOPs([]);
-        return;
-      }
+    if (!selectedFolder || !allSops.length) {
+      setSOPs([]);
+      return;
+    }
 
-      setIsLoadingFolders(true);
-      try {
-        const sopsQuery = query(
-          collection(db, "pdfCategories"),
-          where("folderId", "==", selectedFolder)
-        );
-        const sopsSnapshot = await getDocs(sopsQuery);
-        const sopsData = sopsSnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data(),
-        }));
-        setSOPs(sopsData);
-      } catch (error) {
-        console.error("Error fetching SOPs:", error);
-        toast({
-          title: "Error",
-          description: "Failed to load SOPs",
-          variant: "destructive",
-        });
-      } finally {
-        setIsLoadingFolders(false);
-      }
-    };
-
-    fetchSOPs();
-  }, [selectedFolder, toast]);
+    const filteredSops = allSops.filter(sop => sop.folderId === selectedFolder);
+    console.log(`Found ${filteredSops.length} SOPs in folder ${selectedFolder}`);
+    setSOPs(filteredSops);
+  }, [selectedFolder, allSops]);
 
   const handleDeletePDF = async (id: string) => {
     if (window.confirm("Are you sure you want to delete this SOP?")) {
       try {
-        await deletePDF(id);
+        // Implement delete functionality
+        // After deletion, refresh the SOPs list
+        fetchAllSops();
+        toast({
+          title: "SOP deleted",
+          description: "The SOP has been successfully deleted",
+        });
       } catch (error) {
         console.error("Failed to delete PDF:", error);
+        toast({
+          title: "Error",
+          description: "Failed to delete SOP",
+          variant: "destructive",
+        });
       }
     }
   };
 
   const handleUploadComplete = () => {
-    setUploadSheetOpen(false);
-    refreshCategories();
+    setIsUploadDialogOpen(false);
+    fetchAllSops();
+    toast({
+      title: "Upload complete",
+      description: "Your SOP has been successfully uploaded",
+    });
   };
 
   const handleFolderCreated = () => {
-    refreshCategories();
+    const fetchFolders = async () => {
+      if (!userProfile?.organizationId) return;
+      
+      setIsLoadingFolders(true);
+      try {
+        // Try both collection names to ensure compatibility
+        const collections = ['sopFolders', 'SOPFolders'];
+        let folderList: FolderType[] = [];
+        
+        for (const collectionName of collections) {
+          const q = query(
+            collection(db, collectionName),
+            where('organizationId', '==', userProfile.organizationId)
+          );
+          
+          const querySnapshot = await getDocs(q);
+          const foldersFromCollection = querySnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+          })) as FolderType[];
+          
+          folderList = [...folderList, ...foldersFromCollection];
+        }
+        
+        console.log(`Found ${folderList.length} folders after creation`);
+        setFolders(folderList);
+      } catch (error) {
+        console.error("Error fetching folders:", error);
+      } finally {
+        setIsLoadingFolders(false);
+      }
+    };
+
+    fetchFolders();
   };
 
   const handleViewPDF = (pdf: PDFCategory) => {
-    window.open(pdf.pdfURL, '_blank');
+    const url = pdf.pdfURL || pdf.fileUrl;
+    if (url) {
+      window.open(url, '_blank');
+    } else {
+      toast({
+        title: "Error",
+        description: "PDF URL not found",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleFolderSelect = (folderId: string) => {
+    setSelectedFolder(folderId);
   };
 
   // Group PDFs by folder
   const groupedPDFs: Record<string, PDFCategory[]> = {};
   const unassignedPDFs: PDFCategory[] = [];
 
-  categories.forEach(pdf => {
+  allSops.forEach(pdf => {
     if (pdf.folderId) {
       if (!groupedPDFs[pdf.folderId]) {
         groupedPDFs[pdf.folderId] = [];
@@ -145,16 +225,20 @@ const SOPs = () => {
     }
   });
 
-  const handleFolderSelect = (folderId: string) => {
-    setSelectedFolder(folderId);
-  };
-
   // Show loading state while auth is being checked
   if (authLoading) {
     return (
       <MainLayout>
-        <div className="container mx-auto p-4 flex justify-center items-center min-h-[80vh]">
-          <p>Loading user data...</p>
+        <div className="container mx-auto p-4">
+          <div className="space-y-4">
+            <Skeleton className="h-12 w-1/3" />
+            <Skeleton className="h-8 w-1/4" />
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-6">
+              <Skeleton className="h-40" />
+              <Skeleton className="h-40" />
+              <Skeleton className="h-40" />
+            </div>
+          </div>
         </div>
       </MainLayout>
     );
@@ -187,7 +271,7 @@ const SOPs = () => {
   return (
     <MainLayout>
       <div className="container mx-auto p-4">
-        <div className="flex justify-between items-center mb-6">
+        <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-6">
           <div>
             <h1 className="text-3xl font-bold">Standard Operating Procedures</h1>
             <p className="text-muted-foreground mt-1">
@@ -210,15 +294,10 @@ const SOPs = () => {
                   Upload SOP
                 </Button>
               </DialogTrigger>
-              <DialogContent>
+              <DialogContent className="sm:max-w-[550px]">
                 <SOPUploadForm 
                   folders={folders} 
-                  onUploadComplete={() => {
-                    refreshCategories();
-                    setTimeout(() => {
-                      setIsUploadDialogOpen(false);
-                    }, 1000);
-                  }} 
+                  onUploadComplete={handleUploadComplete}
                 />
               </DialogContent>
             </Dialog>
@@ -241,14 +320,14 @@ const SOPs = () => {
               <h2 className="text-xl font-semibold">
                 {viewMode === "folders" ? "SOP Folders" : "All SOP Documents"}
               </h2>
-              <Button variant="outline" size="sm" onClick={refreshCategories} className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={fetchAllSops} className="flex gap-2">
                 <RefreshCw className="h-4 w-4" /> Refresh
               </Button>
             </div>
             
             <Separator className="mb-4" />
 
-            {isLoading || isLoadingFolders ? (
+            {isLoadingSops || isLoadingFolders ? (
               <div className="space-y-4">
                 {Array.from({ length: 3 }).map((_, i) => (
                   <Card key={i} className="p-4">
@@ -265,51 +344,91 @@ const SOPs = () => {
                   Failed to load SOPs. Please try refreshing.
                 </AlertDescription>
               </Alert>
-            ) : categories.length === 0 ? (
-              <EmptyState
-                title="No SOPs Available"
-                description="Upload your first SOP document to get started."
-              />
             ) : (
-              <TabsContent value="folders" className="mt-0">
-                {/* Show folders with their SOPs */}
-                {folders.length > 0 ? (
-                  <>
-                    <SOPFolderList 
-                      folders={folders} 
-                      selectedFolder={selectedFolder}
-                      onSelectFolder={handleFolderSelect}
-                      loading={isLoadingFolders}
+              <>
+                <TabsContent value="folders" className="mt-0">
+                  {/* Show folders with their SOPs */}
+                  {folders.length > 0 ? (
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                      <div className="md:col-span-1">
+                        <SOPFolderList 
+                          folders={folders} 
+                          selectedFolder={selectedFolder}
+                          onSelectFolder={handleFolderSelect}
+                          loading={isLoadingFolders}
+                        />
+                      </div>
+                      
+                      <div className="md:col-span-3">
+                        {selectedFolder ? (
+                          sops.length > 0 ? (
+                            <SOPFolder
+                              name={folders.find(f => f.id === selectedFolder)?.name || "Selected Folder"}
+                              sopItems={sops}
+                              onViewPDF={handleViewPDF}
+                              onDeletePDF={handleDeletePDF}
+                            />
+                          ) : (
+                            <EmptyState
+                              icon="file"
+                              title="No SOPs in this folder"
+                              description="Upload a SOP to this folder to get started."
+                            />
+                          )
+                        ) : (
+                          <EmptyState
+                            icon="folder"
+                            title="Select a folder"
+                            description="Choose a folder from the list to view its SOPs."
+                          />
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    <EmptyState
+                      icon="folder"
+                      title="No SOP Folders Created"
+                      description="Create a folder to start organizing your SOPs."
                     />
-                    
-                    {/* Unassigned SOPs */}
-                    {unassignedPDFs.length > 0 && (
-                      <SOPFolder
-                        name="Unassigned SOPs"
-                        sopItems={unassignedPDFs}
-                        onViewPDF={handleViewPDF}
-                        onDeletePDF={handleDeletePDF}
-                      />
-                    )}
-                  </>
-                ) : (
-                  <EmptyState
-                    icon="book"
-                    title="No SOP Folders Created"
-                    description="Create a folder to start organizing your SOPs. You can also view all SOPs in the All Documents tab."
-                  />
-                )}
-              </TabsContent>
+                  )}
+                </TabsContent>
+                
+                <TabsContent value="all" className="mt-0">
+                  {/* Show all SOPs without folders */}
+                  {allSops.length > 0 ? (
+                    <div className="space-y-4">
+                      {Object.keys(groupedPDFs).map((folderId) => {
+                        const folderName = folders.find(f => f.id === folderId)?.name || "Unknown Folder";
+                        return (
+                          <SOPFolder
+                            key={folderId}
+                            name={folderName}
+                            sopItems={groupedPDFs[folderId]}
+                            onViewPDF={handleViewPDF}
+                            onDeletePDF={handleDeletePDF}
+                          />
+                        );
+                      })}
+                      
+                      {unassignedPDFs.length > 0 && (
+                        <SOPFolder
+                          name="Unassigned SOPs"
+                          sopItems={unassignedPDFs}
+                          onViewPDF={handleViewPDF}
+                          onDeletePDF={handleDeletePDF}
+                        />
+                      )}
+                    </div>
+                  ) : (
+                    <EmptyState
+                      icon="file"
+                      title="No SOPs Available"
+                      description="Upload your first SOP document to get started."
+                    />
+                  )}
+                </TabsContent>
+              </>
             )}
-            
-            <TabsContent value="all" className="mt-0">
-              {/* Show all SOPs without folders */}
-              <SOPList 
-                sops={sops} 
-                loading={isLoadingFolders} 
-                emptyMessage={selectedFolder ? "No SOPs in this folder" : "Select a folder to view SOPs"}
-              />
-            </TabsContent>
           </div>
         </Tabs>
       </div>

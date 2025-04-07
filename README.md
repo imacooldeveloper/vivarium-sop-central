@@ -1,162 +1,114 @@
 
-# Vivarium SOPs - Standard Operating Procedures Management System
+# Vivarium SOP Central
 
-## Project Overview
-
-Vivarium SOPs is a comprehensive web application designed to manage Standard Operating Procedures (SOPs) for research institutions, laboratories, and organizations working with vivariums. The system allows users to:
-
-- Organize SOPs in folders for easy access
-- Upload and manage PDF documents
-- Associate quizzes with SOPs for training purposes
-- Track user training completion
-- Manage user roles and permissions
+A comprehensive Standard Operating Procedures (SOP) management system for vivariums and animal research facilities. This application allows organizations to create, organize, and manage SOPs, assign training materials, and track employee compliance.
 
 ## Features
 
-### SOP Management
-- **Folder Organization**: Create and organize folders to categorize SOPs
-- **PDF Upload**: Upload, view, and delete PDF documents
-- **Search & Filter**: Find SOPs by category, name, or folder
-- **Version Control**: Track when SOPs were uploaded and by whom
+- **User Authentication**: Secure login and registration with role-based access control
+- **SOP Management**: 
+  - Upload PDF documents
+  - Organize SOPs into folders
+  - View and manage SOPs by category
+- **Training & Certification**: 
+  - Create and assign quizzes based on SOP content
+  - Track quiz completion and scores
+  - Monitor employee certifications
+- **Dashboard**: Overview of organizational compliance and training status
 
-### Training & Quizzes
-- **Quiz Creation**: Create quizzes related to SOPs
-- **Training Assignment**: Assign required training to users
-- **Progress Tracking**: Monitor quiz completion and scores
-- **Training History**: View historical training data
+## Technology Stack
 
-### User Management
-- **User Roles**: Different access levels for administrators and staff
-- **Organization-based Access**: SOPs organized by organization
-- **Personalized Dashboard**: View assigned and completed training
-
-## Technical Stack
-
-This application is built using:
-
-- **React**: Frontend UI library
-- **TypeScript**: Type-safe JavaScript
-- **Firebase**: Backend services including:
-  - Authentication
-  - Firestore database
-  - Storage for PDF files
-- **Tailwind CSS**: Utility-first CSS framework
-- **shadcn/ui**: Component library for UI elements
-- **Vite**: Build tool for faster development
+- **Frontend**: React with TypeScript and Tailwind CSS
+- **UI Components**: shadcn/ui component library
+- **Backend**: Firebase (Authentication, Firestore, Storage)
+- **Routing**: React Router
+- **State Management**: React Context API
+- **Form Handling**: React Hook Form
 
 ## Getting Started
 
 ### Prerequisites
-- Node.js (v16.x or higher)
+
+- Node.js 16+ 
 - npm or yarn
-- Firebase account
+- Firebase project
 
 ### Installation
 
 1. Clone the repository:
-```bash
-git clone https://github.com/imacooldeveloper/VivariumSOPs.git
-cd VivariumSOPs
-```
+   ```bash
+   git clone https://github.com/imacooldeveloper/vivarium-sop-central.git
+   cd vivarium-sop-central
+   ```
 
 2. Install dependencies:
-```bash
-npm install
-```
+   ```bash
+   npm install
+   # or
+   yarn
+   ```
 
-3. Create a `.env` file at the root of the project with your Firebase configuration:
-```
-REACT_APP_FIREBASE_API_KEY=your_api_key
-REACT_APP_FIREBASE_AUTH_DOMAIN=your_auth_domain
-REACT_APP_FIREBASE_PROJECT_ID=your_project_id
-REACT_APP_FIREBASE_STORAGE_BUCKET=your_storage_bucket
-REACT_APP_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
-REACT_APP_FIREBASE_APP_ID=your_app_id
-```
+3. Create a `.env` file in the project root with your Firebase configuration:
+   ```
+   VITE_FIREBASE_API_KEY=your_api_key
+   VITE_FIREBASE_AUTH_DOMAIN=your_auth_domain
+   VITE_FIREBASE_PROJECT_ID=your_project_id
+   VITE_FIREBASE_STORAGE_BUCKET=your_storage_bucket
+   VITE_FIREBASE_MESSAGING_SENDER_ID=your_messaging_sender_id
+   VITE_FIREBASE_APP_ID=your_app_id
+   ```
 
 4. Start the development server:
-```bash
-npm run dev
-```
+   ```bash
+   npm run dev
+   # or
+   yarn dev
+   ```
 
 ## Project Structure
 
 ```
 src/
-├── components/          # UI components
-│   ├── Layout/          # Layout components like Sidebar and MainLayout
-│   ├── SOPs/            # SOP-related components
-│   ├── Quizzes/         # Quiz-related components
-│   ├── Admin/           # Admin panel components
-│   └── ui/              # Base UI components from shadcn
-├── context/             # React context providers
-├── hooks/               # Custom React hooks
-├── lib/                 # Utility libraries
-├── pages/               # Top-level page components
-├── types/               # TypeScript type definitions
-├── viewmodels/          # Business logic for components
-└── main.tsx             # Application entry point
+  ├── components/          # Reusable UI components
+  │   ├── Admin/           # Admin-specific components
+  │   ├── Dashboard/       # Dashboard components
+  │   ├── Layout/          # Layout components (Sidebar, Topbar)
+  │   ├── Quizzes/         # Quiz-related components
+  │   ├── SOPs/            # SOP-related components
+  │   └── ui/              # shadcn/ui components
+  ├── context/             # React contexts
+  │   └── AuthContext.tsx  # Authentication context
+  ├── hooks/               # Custom React hooks
+  ├── lib/                 # Utility functions and configurations
+  │   └── firebase.ts      # Firebase initialization
+  ├── pages/               # Page components
+  │   ├── Auth/            # Authentication pages
+  │   └── ...              # Other pages
+  ├── types/               # TypeScript type definitions
+  │   └── index.ts         # Main type definitions file
+  └── viewmodels/          # View models for data handling
 ```
 
-## Firebase Collections
+## Firestore Data Structure
 
-The application uses the following Firestore collections:
+- **Users**: User profiles and authentication info
+- **SOPFolders**: Folders for organizing SOPs
+- **pdfCategories**: SOP documents and metadata
+- **Quizzes**: Quiz questions and configurations
+- **QuizAttempts**: User quiz attempt records
 
-- **sopFolders**: Stores folder information for organizing SOPs
-- **pdfCategories**: Stores metadata for uploaded SOPs
-- **quizzes**: Stores quiz questions and answers
-- **quizAttempts**: Stores user quiz attempts and results
-- **userProfiles**: Stores extended user information
+## Features To Be Added
 
-## Current Status
-
-The project currently implements:
-- User authentication
-- SOP folder creation and management
-- PDF upload and organization
-- Basic quiz structure
-
-## What's Missing / Roadmap
-
-The following features are planned for future implementation:
-
-1. **Enhanced Quiz Functionality**:
-   - Quiz creation interface
-   - Question bank management
-   - Quiz attempt tracking
-
-2. **Advanced Reporting**:
-   - Training compliance reports
-   - User activity logs
-   - Analytics dashboard
-
-3. **Improved User Management**:
-   - User groups
-   - Batch assignment of training
-   - Approval workflows
-
-4. **System Integration**:
-   - Calendar integration for training deadlines
-   - Email notifications
-   - API for external system integration
-
-5. **Mobile Optimization**:
-   - Better responsive design
-   - Mobile-specific features
-
-## Deployment
-
-The application can be deployed to Firebase Hosting:
-
-```bash
-npm run build
-firebase deploy
-```
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
+- **Advanced Reporting**: Generate compliance reports
+- **Email Notifications**: Automatic reminders for required training
+- **Version Control**: Track SOP revisions and updates
+- **Mobile Optimization**: Responsive design for all device sizes
+- **API Integration**: Connect to LIMS and other laboratory systems
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+This project is proprietary and confidential. Unauthorized copying of this file, via any medium is strictly prohibited.
+
+## Contact
+
+For questions or support, please contact [your-email@example.com](mailto:your-email@example.com).

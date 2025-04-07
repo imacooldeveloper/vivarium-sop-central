@@ -6,9 +6,10 @@ export interface UserProfile {
   userEmail: string;
   organizationId: string;
   role: string;
+  accountType?: string;
+  quizScores?: any[];
 }
 
-// Add User type for related components
 export interface User {
   id: string;
   email: string;
@@ -16,6 +17,12 @@ export interface User {
   lastName?: string;
   role?: string;
   organizationId?: string;
+  accountType?: string;
+  quizScores?: any[];
+  userEmail?: string;
+  userUID?: string;
+  facilityName?: string;
+  username?: string;
 }
 
 export interface SOPCategory {
@@ -49,6 +56,10 @@ export interface PDFCategory {
   uploadedAt: any;
   folderId?: string | null;
   categoryId?: string; // Added for CategoryManager compatibility
+  fileName?: string;
+  fileUrl?: string;
+  title?: string;
+  uploadedByName?: string;
 }
 
 // Add Quiz type for components that reference it
@@ -57,6 +68,7 @@ export interface Quiz {
   title: string;
   description: string;
   category?: string;
+  subcategory?: string;
   questions?: QuizQuestion[];
   createdBy?: string;
   createdAt?: any;
@@ -70,6 +82,8 @@ export interface Quiz {
   organizationId?: string;
   assignedTo?: string[];
   dueDate?: any;
+  isRequired?: boolean;
+  categoryId?: string;
 }
 
 export interface QuizQuestion {
@@ -77,6 +91,8 @@ export interface QuizQuestion {
   text: string;
   options: QuizOption[];
   correctOptionId: string;
+  question?: string;
+  correctAnswerIndex?: number;
 }
 
 export interface QuizOption {

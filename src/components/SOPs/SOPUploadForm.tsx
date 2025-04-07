@@ -1,3 +1,4 @@
+
 import React, { useState, useRef } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,9 +11,10 @@ import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from "@/components/ui/use-toast";
+import { Folder } from "@/types";
 
 interface SOPUploadFormProps {
-  folders: { id: string; name: string }[];
+  folders: Folder[];
   onUploadComplete: () => void;
 }
 
@@ -22,7 +24,7 @@ export function SOPUploadForm({ folders, onUploadComplete }: SOPUploadFormProps)
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const { user } = useAuth();
+  const { userProfile } = useAuth();
   const { toast } = useToast();
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -47,7 +49,7 @@ export function SOPUploadForm({ folders, onUploadComplete }: SOPUploadFormProps)
     // Prevent form submission which might cause page reload or dialog close
     e.preventDefault();
     
-    if (!file || !title || !selectedFolder || !user) {
+    if (!file || !title || !selectedFolder || !userProfile) {
       toast({
         title: "Missing information",
         description: "Please fill in all fields and select a PDF file",
@@ -60,7 +62,8 @@ export function SOPUploadForm({ folders, onUploadComplete }: SOPUploadFormProps)
 
     try {
       // Create a unique file path in Firebase Storage
-      const storageRef = ref(storage, `sops/${selectedFolder}/${Date.now()}_${file.name}`);
+      const timestamp = Date.now();
+      const storageRef = ref(storage, `sops/${selectedFolder}/${timestamp}_${file.name}`);
       
       // Upload the file
       const uploadResult = await uploadBytes(storageRef, file);
@@ -71,13 +74,18 @@ export function SOPUploadForm({ folders, onUploadComplete }: SOPUploadFormProps)
       // Add document to Firestore
       await addDoc(collection(db, "pdfCategories"), {
         title,
+        pdfName: file.name,
+        fileName: file.name,
         folderId: selectedFolder,
         fileUrl: downloadURL,
-        fileName: file.name,
-        uploadedBy: user.uid,
-        uploadedByName: user.displayName || user.email,
+        pdfURL: downloadURL,
+        uploadedBy: userProfile.id,
+        uploadedByName: userProfile.firstName ? `${userProfile.firstName} ${userProfile.lastName || ''}` : userProfile.email,
+        organizationId: userProfile.organizationId,
         createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
+        uploadedAt: serverTimestamp(),
+        nameOfCategory: folders.find(folder => folder.id === selectedFolder)?.name || "Unknown Category",
+        SOPForStaffTittle: title,
       });
 
       toast({
@@ -109,7 +117,7 @@ export function SOPUploadForm({ folders, onUploadComplete }: SOPUploadFormProps)
 
   return (
     <form onSubmit={handleUpload}>
-      <Card className="w-full max-w-md mx-auto">
+      <Card className="w-full">
         <CardHeader>
           <CardTitle>Upload New SOP</CardTitle>
         </CardHeader>
@@ -132,13 +140,24 @@ export function SOPUploadForm({ folders, onUploadComplete }: SOPUploadFormProps)
                 <SelectValue placeholder="Select a folder" />
               </SelectTrigger>
               <SelectContent>
-                {folders.map((folder) => (
-                  <SelectItem key={folder.id} value={folder.id}>
-                    {folder.name}
+                {folders.length > 0 ? (
+                  folders.map((folder) => (
+                    <SelectItem key={folder.id} value={folder.id}>
+                      {folder.name}
+                    </SelectItem>
+                  ))
+                ) : (
+                  <SelectItem value="no-folders" disabled>
+                    No folders available
                   </SelectItem>
-                ))}
+                )}
               </SelectContent>
             </Select>
+            {folders.length === 0 && (
+              <p className="text-xs text-muted-foreground mt-1">
+                You need to create a folder before uploading SOPs.
+              </p>
+            )}
           </div>
           
           <div className="space-y-2">
@@ -160,7 +179,7 @@ export function SOPUploadForm({ folders, onUploadComplete }: SOPUploadFormProps)
           
           <Button 
             type="submit"
-            disabled={uploading || !file || !title || !selectedFolder}
+            disabled={uploading || !file || !title || !selectedFolder || folders.length === 0}
             className="w-full"
           >
             {uploading ? (
